@@ -3,4 +3,5 @@ pom.xml
 /lib/
 /classes/
 /targets/
+/site/posts/
 .lein-deps-sum

@@ -3,6 +3,8 @@
   [:use [markdown.core :only [md-to-html-string]]]
   [:use [hiccup core page]])
 
+(def src-posts-path "assets/posts")
+(def dest-posts-path "site/posts")
 
 (defn html-post [title body]
   (html5 [:head
@@ -39,4 +41,6 @@
         (convert-md-file md-file dest-path)))))
 
 (defn -main [& args]
-  (convert-all-md-files "assets/posts" "site/posts"))
+  ; Bit of a hack to create the folder - better way?
+  (jio/make-parents (str dest-posts-path "/x"))
+  (convert-all-md-files src-posts-path dest-posts-path))
