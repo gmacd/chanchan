@@ -1,7 +1,10 @@
 (ns blog.core
   [:require [clojure.java.io :as jio]]
   [:use [markdown.core :only [md-to-html-string]]]
-  [:use [hiccup core page]])
+  [:use [hiccup core page]]
+  [:use [ring.adapter.jetty]]
+  [:use [ring.util.response]]
+  [:use [ring.middleware resource file file-info]])
 
 (def src-posts-path "assets/posts")
 (def dest-posts-path "site/posts")
@@ -40,7 +43,14 @@
       (let [dest-path (str dest-path "/" (with-ext (.getName md-file) "html"))]
         (convert-md-file md-file dest-path)))))
 
+(defn handler [request]
+  (response "hello world"))
+
+(def app
+  (wrap-file handler "site/"))
+
 (defn -main [& args]
   ; Bit of a hack to create the folder - better way?
   (jio/make-parents (str dest-posts-path "/x"))
-  (convert-all-md-files src-posts-path dest-posts-path))
+  (convert-all-md-files src-posts-path dest-posts-path)
+  (run-jetty app {:port 3000}))
