@@ -2,6 +2,7 @@
   [:require [clojure.java.io :as jio]]
   [:use [markdown.core :only [md-to-html-string]]]
   [:use [hiccup core page]]
+  [:use [watchtower.core]]
   [:use [ring.adapter.jetty]]
   [:use [ring.util.response]]
   [:use [ring.middleware resource file file-info]])
@@ -28,6 +29,10 @@
       (str (.substring path 0 period-idx) "." ext)
       (str path "." ext))))
 
+(defn with-path [src-path dest-folder-path]
+  "Convert src path to dest path"
+  (str dest-folder-path "/" (.getName src-path) "html"))
+
 (defn convert-md-file [src dest]
   (let [md-contents (slurp src)]
     (->> md-contents
@@ -40,14 +45,28 @@
         dest (jio/file dest-path)
         md-files (files-with-extension src-path ".md")]
     (doseq [md-file md-files]
-      (let [dest-path (str dest-path "/" (with-ext (.getName md-file) "html"))]
-        (convert-md-file md-file dest-path)))))
+      (convert-md-file md-file
+                       (with-ext (with-path md-file dest-path) "html")))))
 
 (defn handler [request]
   (response "hello world"))
 
 (def app
   (wrap-file handler "site/"))
+
+(defn- on-posts-changed [post-files]
+  "Called when a post has been modified"
+  (doseq [md-file post-files]
+    (convert-md-file md-file
+                     (with-ext (with-path md-file dest-posts-path) "html"))
+    (println (str "Converted file: " md-file))))
+
+; File watcher future for .md posts
+(def post-watcher (watcher src-posts-path
+                           (rate 50)
+                           (file-filter ignore-dotfiles)
+                           (file-filter (extensions :md))
+                           (on-change on-posts-changed)))
 
 (defn -main [& args]
   ; Bit of a hack to create the folder - better way?
