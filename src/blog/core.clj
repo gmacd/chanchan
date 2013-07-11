@@ -48,6 +48,7 @@
       (convert-md-file md-file
                        (with-ext (with-path md-file dest-path) "html")))))
 
+; TODO better fallback
 (defn handler [request]
   (response "hello world"))
 
