@@ -1,11 +1,11 @@
 (ns blog.core
-  [:require [clojure.java.io :as jio]]
-  [:use [markdown.core :only [md-to-html-string]]]
-  [:use [hiccup core page]]
-  [:use [watchtower.core]]
-  [:use [ring.adapter.jetty]]
-  [:use [ring.util.response]]
-  [:use [ring.middleware resource file file-info]])
+  (:require [clojure.java.io :as jio])
+  (:use [markdown.core :only (md-to-html-string)]
+        [hiccup core page]
+        watchtower.core
+        ring.adapter.jetty
+        ring.util.response
+        [ring.middleware resource file file-info]))
 
 (def src-posts-path "assets/posts")
 (def dest-posts-path "site/posts")
