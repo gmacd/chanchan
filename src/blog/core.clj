@@ -2,17 +2,15 @@
   (:require [clojure.java.io :as jio])
   (:use [markdown.core :only (md-to-html-string)]
         [hiccup core page]
+        clostache.parser
         watchtower.core
         ring.adapter.jetty
         ring.util.response
         [ring.middleware resource file file-info]))
 
-(def src-posts-path "assets/posts")
-(def dest-posts-path "site/posts")
-
 (defn html-post [title body]
   (html5 [:head
-          [:link {:rel "stylesheet" :type "text/css" :href "../bootstrap/css/bootstrap.css"}]
+          [:link {:rel "stylesheet" :type "text/css" :href "/bootstrap/css/bootstrap.css"}]
           [:title title]]
          [:body body]))
 
@@ -41,12 +39,18 @@
          (spit dest))))
 
 (defn convert-all-md-files [src-path dest-path]
-  (let [src (jio/file src-path)
-        dest (jio/file dest-path)
-        md-files (files-with-extension src-path ".md")]
+  (let [md-files (files-with-extension src-path ".md")]
     (doseq [md-file md-files]
       (convert-md-file md-file
                        (with-ext (with-path md-file dest-path) "html")))))
+
+(defn generate-homepage [src-path dest-path]
+  (spit (str dest-path "/index.html")
+        (-> (slurp (str src-path "/index.html"))
+            (render {:title "wot?"
+                     :body "eh?"})))
+  (println "Converted homepage"))
+    
 
 ; TODO better fallback
 (defn handler [request]
@@ -55,12 +59,20 @@
 (def app
   (wrap-file handler "site/"))
 
+
+(def src-posts-path "assets/posts")
+(def dest-posts-path "site/posts")
+(def templates-path "assets/templates")
+(def dest-root-path "site")
+
+
 (defn- on-posts-changed [post-files]
   "Called when a post has been modified"
   (doseq [md-file post-files]
     (convert-md-file md-file
                      (with-ext (with-path md-file dest-posts-path) "html"))
     (println (str "Converted file: " md-file))))
+
 
 ; File watcher future for .md posts
 (def post-watcher (watcher src-posts-path
@@ -69,8 +81,15 @@
                            (file-filter (extensions :md))
                            (on-change on-posts-changed)))
 
-(defn -main [& args]
+(defn build-site []
   ; Bit of a hack to create the folder - better way?
   (jio/make-parents (str dest-posts-path "/x"))
   (convert-all-md-files src-posts-path dest-posts-path)
+  (generate-homepage templates-path dest-root-path))
+
+(defn launch-server []
   (run-jetty app {:port 3000}))
+
+(defn -main [& args]
+  (build-site)
+  (launch-server))

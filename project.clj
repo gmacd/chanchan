@@ -8,5 +8,6 @@
                  [ring/ring-core "1.2.0"]
                  [ring/ring-jetty-adapter "1.2.0"]
                  [hiccup "1.0.3"]
+                 [de.ubercode.clostache/clostache "1.3.1"]
                  [markdown-clj "0.9.28"]
                  [watchtower "0.1.1"]])
