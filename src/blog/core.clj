@@ -27,17 +27,6 @@
       (str (.substring path 0 period-idx) "." ext)
       (str path "." ext))))
 
-(defn with-path [src-path dest-folder-path]
-  "Convert src path to dest path"
-  (str dest-folder-path "/" (.getName src-path) "html"))
-
-(defn generate-homepage [posts src-path dest-path]
-  (spit (str dest-path "/index.html")
-        (-> (slurp (str src-path "/index.html"))
-            (render {:title "wot?"
-                     :body "eh?"})))
-  (println "Converted homepage"))
-
 ; TODO better fallback - 404?  Is this really an error handler?
 (defn handler [request]
   (response "hello world"))
@@ -56,15 +45,28 @@
   (->> (files-with-extension src-posts-path ".md")
        (map read-post)))
 
+; TODO dest-path should be a file - currently it's a string
 (defn convert-posts [posts dest-posts-path]
   "Given a seq of posts, convert them to html"
-  (->> posts
-       (map #(assoc % :html (html-post (:title %) (md-to-html-string (:body %)))))
-       (map #(assoc % :dest-path (with-ext (with-path (:src-path %) dest-posts-path) "html")))))
+  (letfn [(html-filename [file] (with-ext (.getName file) "html"))]
+    (map #(assoc %
+            :html (html-post (:title %) (md-to-html-string (:body %)))
+            :dest-path (str dest-posts-path "/" (html-filename (:src-path %)))
+            :url (str "/posts/" (html-filename (:src-path %))))
+         posts)))
+
 
 (defn write-posts [posts]
   "Output all posts"
   (map #(spit (:dest-path %) (:html %)) posts))
+
+(defn generate-homepage [posts src-path dest-path]
+  (spit (str dest-path "/index.html")
+        (-> (slurp (str src-path "/index.html"))
+            (render {:title "wot?"
+                     :body "eh?"
+                     :posts posts})))
+  (println "Converted homepage"))
 
 
 (def src-posts-path "assets/posts")
