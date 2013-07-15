@@ -50,7 +50,6 @@
             (render {:title "wot?"
                      :body "eh?"})))
   (println "Converted homepage"))
-    
 
 ; TODO better fallback
 (defn handler [request]
@@ -81,11 +80,36 @@
                            (file-filter (extensions :md))
                            (on-change on-posts-changed)))
 
+(defn read-post [post-path]
+  {:src-path post-path
+   :title post-path
+   :body (slurp post-path)})
+
+(defn gather-posts [src-posts-path]
+  (map read-post (files-with-extension src-posts-path ".md")))
+;    (doseq [post-file md-files]
+;      (read-post post-file)
+;      (convert-md-file md-file
+;                       (with-ext (with-path md-file dest-path) "html"))))))
+
+(defn convert-posts [posts dest-posts-path]
+  (leftn [(convert-post [post]
+                        (html-post (:title post) (md-to-html-string (:body post))))]
+                             
+  (map #(->> % (md-to-html-string %)
+         (html-post "post?")
+  (letfn [
+  (map #(convert-md
+         (:src-path %)
+         ) posts)
+
 (defn build-site []
   ; Bit of a hack to create the folder - better way?
   (jio/make-parents (str dest-posts-path "/x"))
-  (convert-all-md-files src-posts-path dest-posts-path)
-  (generate-homepage templates-path dest-root-path))
+  (let [posts (gather-posts src-posts-path)]
+    (convert-posts posts dest-posts-path)
+    ;(convert-all-md-files src-posts-path dest-posts-path)]
+    (generate-homepage posts templates-path dest-root-path)))
 
 (defn launch-server []
   (run-jetty app {:port 3000}))
