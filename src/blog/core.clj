@@ -31,32 +31,37 @@
   "Convert src path to dest path"
   (str dest-folder-path "/" (.getName src-path) "html"))
 
-(defn convert-md-file [src dest]
-  (let [md-contents (slurp src)]
-    (->> md-contents
-         (md-to-html-string)
-         (html-post "post?")
-         (spit dest))))
-
-(defn convert-all-md-files [src-path dest-path]
-  (let [md-files (files-with-extension src-path ".md")]
-    (doseq [md-file md-files]
-      (convert-md-file md-file
-                       (with-ext (with-path md-file dest-path) "html")))))
-
-(defn generate-homepage [src-path dest-path]
+(defn generate-homepage [posts src-path dest-path]
   (spit (str dest-path "/index.html")
         (-> (slurp (str src-path "/index.html"))
             (render {:title "wot?"
                      :body "eh?"})))
   (println "Converted homepage"))
 
-; TODO better fallback
+; TODO better fallback - 404?  Is this really an error handler?
 (defn handler [request]
   (response "hello world"))
 
 (def app
   (wrap-file handler "site/"))
+
+
+(defn read-post [post-path]
+  {:src-path post-path
+   :title post-path
+   :body (slurp post-path)})
+
+(defn gather-posts [src-posts-path]
+  "Scan all src posts, returning a collection of posts"
+  (->> (files-with-extension src-posts-path ".md")
+       (map read-post)))
+
+(defn convert-posts [posts dest-posts-path]
+  "Given a seq of posts, convert them to html"
+  (->> posts
+      (map #(assoc % :html (html-post (:title %) (md-to-html-string (:body %)))))
+      (map #(assoc % :dest-path (with-ext (with-path (:src-path %) dest-posts-path) "html")))
+      (map #(spit (:dest-path %) (:html %)))))
 
 
 (def src-posts-path "assets/posts")
@@ -65,13 +70,20 @@
 (def dest-root-path "site")
 
 
-(defn- on-posts-changed [post-files]
-  "Called when a post has been modified"
-  (doseq [md-file post-files]
-    (convert-md-file md-file
-                     (with-ext (with-path md-file dest-posts-path) "html"))
-    (println (str "Converted file: " md-file))))
+(defn build-site []
+  ; Bit of a hack to create the folder - better way?
+  (jio/make-parents (str dest-posts-path "/x"))
+  (let [posts (gather-posts src-posts-path)]
+    (doseq [p posts] (println "Converted " (.getPath (:src-path p))))
+    (convert-posts posts dest-posts-path)
+    (generate-homepage posts templates-path dest-root-path)))
 
+
+(defn- on-posts-changed [post-files]
+  "Rebuild site when files changed"
+  ; TODO - Currently rebuilds entire site - worth making smarter?  Right now, no!
+  ; TODO check file stamp for files newer than start time
+  (build-site))
 
 ; File watcher future for .md posts
 (def post-watcher (watcher src-posts-path
@@ -80,36 +92,6 @@
                            (file-filter (extensions :md))
                            (on-change on-posts-changed)))
 
-(defn read-post [post-path]
-  {:src-path post-path
-   :title post-path
-   :body (slurp post-path)})
-
-(defn gather-posts [src-posts-path]
-  (map read-post (files-with-extension src-posts-path ".md")))
-;    (doseq [post-file md-files]
-;      (read-post post-file)
-;      (convert-md-file md-file
-;                       (with-ext (with-path md-file dest-path) "html"))))))
-
-(defn convert-posts [posts dest-posts-path]
-  (leftn [(convert-post [post]
-                        (html-post (:title post) (md-to-html-string (:body post))))]
-                             
-  (map #(->> % (md-to-html-string %)
-         (html-post "post?")
-  (letfn [
-  (map #(convert-md
-         (:src-path %)
-         ) posts)
-
-(defn build-site []
-  ; Bit of a hack to create the folder - better way?
-  (jio/make-parents (str dest-posts-path "/x"))
-  (let [posts (gather-posts src-posts-path)]
-    (convert-posts posts dest-posts-path)
-    ;(convert-all-md-files src-posts-path dest-posts-path)]
-    (generate-homepage posts templates-path dest-root-path)))
 
 (defn launch-server []
   (run-jetty app {:port 3000}))
