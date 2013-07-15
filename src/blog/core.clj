@@ -59,9 +59,12 @@
 (defn convert-posts [posts dest-posts-path]
   "Given a seq of posts, convert them to html"
   (->> posts
-      (map #(assoc % :html (html-post (:title %) (md-to-html-string (:body %)))))
-      (map #(assoc % :dest-path (with-ext (with-path (:src-path %) dest-posts-path) "html")))
-      (map #(spit (:dest-path %) (:html %)))))
+       (map #(assoc % :html (html-post (:title %) (md-to-html-string (:body %)))))
+       (map #(assoc % :dest-path (with-ext (with-path (:src-path %) dest-posts-path) "html")))))
+
+(defn write-posts [posts]
+  "Output all posts"
+  (map #(spit (:dest-path %) (:html %)) posts))
 
 
 (def src-posts-path "assets/posts")
@@ -73,9 +76,10 @@
 (defn build-site []
   ; Bit of a hack to create the folder - better way?
   (jio/make-parents (str dest-posts-path "/x"))
-  (let [posts (gather-posts src-posts-path)]
-    (doseq [p posts] (println "Converted " (.getPath (:src-path p))))
-    (convert-posts posts dest-posts-path)
+  (let [posts (-> (gather-posts src-posts-path)
+                  (convert-posts dest-posts-path))]
+    (write-posts posts)
+    (doseq [p posts] (println "Converted" (:dest-path p)))
     (generate-homepage posts templates-path dest-root-path)))
 
 
