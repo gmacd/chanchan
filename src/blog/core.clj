@@ -35,14 +35,25 @@
 (def app
   (wrap-file handler "site/"))
 
+(defn metadata-string->map [metadata]
+  "Given string of several lines of form 'key1:value1', return map of kvps."
+  (let [metadata (if (nil? metadata) "" metadata)]
+    (let [kvp-strings (map #(string/split % #":") (string/split metadata #"[\r\n]+"))]
+      (into {}
+            (for [[k v] kvp-strings :when (not (string/blank? k))]
+              [(keyword k) ((fnil string/trim "") v)])))))
 
 (defn read-post [post-path]
+  "Read in a post from post-path. Content should be split by '----' alone on a
+   line.  If two parts exist, first part is considered metadata, one per line,
+   keys and values seperated by ':'.  Second part is Markdown content.  If no
+   split, entire message is considered Markdown content."
   (let [contents (slurp post-path)
-        [md raw-metadata] (reverse (string/split contents #"\n\s*\n" 2))]
-    ; TODO Parse metadata -> map
-    {:meta raw-metadata
+        [md raw-metadata] (reverse (string/split contents #"[\r\n]+-+[\r\n]+" 2))
+        metadata (metadata-string->map raw-metadata)]
+    {:meta metadata
      :src-path post-path
-     :title post-path
+     :title (:title metadata)
      :body md}))
 
 (defn gather-posts [src-posts-path]
@@ -63,7 +74,8 @@
 
 (defn write-posts [posts]
   "Output all posts"
-  (map #(spit (:dest-path %) (:html %)) posts))
+  (doseq [post posts]
+    (spit (:dest-path post) (:html post))))
 
 (defn generate-homepage [posts src-path dest-path]
   (spit (str dest-path "/index.html")
