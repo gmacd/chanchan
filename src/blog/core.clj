@@ -1,5 +1,6 @@
 (ns blog.core
-  (:require [clojure.java.io :as jio])
+  (:require [clojure.java.io :as jio]
+            [clojure.string :as string])
   (:use [markdown.core :only (md-to-html-string)]
         [hiccup core page]
         clostache.parser
@@ -36,9 +37,13 @@
 
 
 (defn read-post [post-path]
-  {:src-path post-path
-   :title post-path
-   :body (slurp post-path)})
+  (let [contents (slurp post-path)
+        [md raw-metadata] (reverse (string/split contents #"\n\s*\n" 2))]
+    ; TODO Parse metadata -> map
+    {:meta raw-metadata
+     :src-path post-path
+     :title post-path
+     :body md}))
 
 (defn gather-posts [src-posts-path]
   "Scan all src posts, returning a collection of posts"
