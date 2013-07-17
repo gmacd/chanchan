@@ -2,18 +2,11 @@
   (:require [clojure.java.io :as jio]
             [clojure.string :as string])
   (:use [markdown.core :only (md-to-html-string)]
-        [hiccup core page]
         clostache.parser
         watchtower.core
         ring.adapter.jetty
         ring.util.response
         [ring.middleware resource file file-info]))
-
-(defn html-post [title body]
-  (html5 [:head
-          [:link {:rel "stylesheet" :type "text/css" :href "/bootstrap/css/bootstrap.css"}]
-          [:title title]]
-         [:body body]))
 
 (defn files-with-extension [src ext]
   "Return all files in src with the extension ext.  E.g. '.md'"
@@ -66,22 +59,27 @@
   "Given a seq of posts, convert them to html"
   (letfn [(html-filename [file] (with-ext (.getName file) "html"))]
     (map #(assoc %
-            :html (html-post (:title %) (md-to-html-string (:body %)))
+            :html (md-to-html-string (:body %))
             :dest-path (str dest-posts-path "/" (html-filename (:src-path %)))
             :url (str "/posts/" (html-filename (:src-path %))))
          posts)))
 
 
-(defn write-posts [posts]
+(defn write-posts [posts templates-path]
   "Output all posts"
-  (doseq [post posts]
-    (spit (:dest-path post) (:html post))))
+  (let [post-template (slurp (str templates-path "/post.html"))]
+    (doseq [post posts]
+      (spit (:dest-path post)
+            (render post-template
+                    {:title (:title post)
+                     :post (:html post)})))))
 
+; TODO title should be data driven
+; TODO make generic page generator?
 (defn generate-homepage [posts src-path dest-path]
   (spit (str dest-path "/index.html")
         (-> (slurp (str src-path "/index.html"))
             (render {:title "wot?"
-                     :body "eh?"
                      :posts posts})))
   (println "Converted homepage"))
 
@@ -97,7 +95,7 @@
   (jio/make-parents (str dest-posts-path "/x"))
   (let [posts (-> (gather-posts src-posts-path)
                   (convert-posts dest-posts-path))]
-    (write-posts posts)
+    (write-posts posts templates-path)
     (doseq [p posts] (println "Converted" (:dest-path p)))
     (generate-homepage posts templates-path dest-root-path)))
 
