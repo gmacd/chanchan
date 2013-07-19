@@ -6,7 +6,14 @@
         watchtower.core
         ring.adapter.jetty
         ring.util.response
-        [ring.middleware resource file file-info]))
+        [ring.middleware resource file file-info])
+  (:import (java.nio.file Files LinkOption)
+           (java.nio.file.attribute BasicFileAttributes)))
+
+(defn file-attributes [file]
+  "Return the file BasicFileAttributes of file.  File can be a file or a string
+   (or anything else acceptable to jio/file)"
+  (Files/readAttributes (.toPath (jio/file file)) BasicFileAttributes (into-array LinkOption [])))
 
 (defn files-with-extension [src ext]
   "Return all files in src with the extension ext.  E.g. '.md'"
