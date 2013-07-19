@@ -7,7 +7,9 @@
         ring.adapter.jetty
         ring.util.response
         [ring.middleware resource file file-info])
-  (:import (java.nio.file Files LinkOption)
+  (:import (java.text SimpleDateFormat ParsePosition)
+           (java.util Date)
+           (java.nio.file Files LinkOption)
            (java.nio.file.attribute BasicFileAttributes)))
 
 (defn file-attributes [file]
@@ -60,6 +62,16 @@
   "Scan all src posts, returning a collection of posts"
   (->> (files-with-extension src-posts-path ".md")
        (map read-post)))
+
+; TODO - will a new SimpleDateFormat and ParsePosition get created each time this is called?
+; Create func for parsing date and memoize parser?
+(defn get-post-date [post]
+  "Given a post record, extract the date from the metadata if possible,
+  in format YYYY-MM-DD, otherwise get the creation date of the src post."
+  (let [date (:date (:metadata post))]
+    (if (nil? date)
+      (-> (file-attributes (:src-path post)) (.creationTime) (.toMillis) (Date.))
+      (-> (SimpleDateFormat. "yyyy-MM-dd") (.parse sdf "2010-09-28" (ParsePosition. 0))))))
 
 ; TODO dest-path should be a file - currently it's a string
 (defn convert-posts [posts dest-posts-path]
