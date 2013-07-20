@@ -53,7 +53,7 @@
   (let [contents (slurp post-path)
         [md raw-metadata] (reverse (string/split contents #"[\r\n]+-+[\r\n]+" 2))
         metadata (metadata-string->map raw-metadata)]
-    {:meta metadata
+    {:metadata metadata
      :src-path post-path
      :title (:title metadata)
      :body md}))
@@ -71,7 +71,7 @@
   (let [date (:date (:metadata post))]
     (if (nil? date)
       (-> (file-attributes (:src-path post)) (.creationTime) (.toMillis) (Date.))
-      (-> (SimpleDateFormat. "yyyy-MM-dd") (.parse sdf "2010-09-28" (ParsePosition. 0))))))
+      (-> (SimpleDateFormat. "yyyy-MM-dd") (.parse date (ParsePosition. 0))))))
 
 ; TODO dest-path should be a file - currently it's a string
 (defn convert-posts [posts dest-posts-path]
@@ -91,6 +91,7 @@
       (spit (:dest-path post)
             (render post-template
                     {:title (:title post)
+                     :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-post-date post)))
                      :post (:html post)})))))
 
 ; TODO title should be data driven
