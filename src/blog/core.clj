@@ -12,6 +12,9 @@
            (java.nio.file Files LinkOption)
            (java.nio.file.attribute BasicFileAttributes)))
 
+; TODO Remove ring dependencies
+; TODO Move generic file-related function
+
 (defn file-attributes [file]
   "Return the file BasicFileAttributes of file.  File can be a file or a string
    (or anything else acceptable to jio/file)"
@@ -45,54 +48,57 @@
             (for [[k v] kvp-strings :when (not (string/blank? k))]
               [(keyword k) ((fnil string/trim "") v)])))))
 
-(defn read-post [post-path]
-  "Read in a post from post-path. Content should be split by '----' alone on a
-   line.  If two parts exist, first part is considered metadata, one per line,
-   keys and values seperated by ':'.  Second part is Markdown content.  If no
-   split, entire message is considered Markdown content."
-  (let [contents (slurp post-path)
+(defn read-md-asset [src-asset-path]
+  "Read in a post or page from src-asset-path. Content should be split by '----'
+   alone on a line.  If two parts exist, first part is considered metadata, one
+   per line, keys and values seperated by ':'.  Second part is Markdown content.
+   If no split, entire message is considered Markdown content."
+  (let [contents (slurp src-asset-path)
         [md raw-metadata] (reverse (string/split contents #"[\r\n]+-+[\r\n]+" 2))
         metadata (metadata-string->map raw-metadata)]
     {:metadata metadata
-     :src-path post-path
+     :src-path src-asset-path
      :title (:title metadata)
      :body md}))
 
-(defn gather-posts [src-posts-path]
-  "Scan all src posts, returning a collection of posts"
-  (->> (files-with-extension src-posts-path ".md")
-       (map read-post)))
+(defn gather-md-assets [src-path]
+  "Scan all md files, returning a collection of records containing the processed
+   md file and any metadata."
+  (->> (files-with-extension src-path ".md")
+       (map read-md-asset)))
 
 ; TODO - will a new SimpleDateFormat and ParsePosition get created each time this is called?
 ; Create func for parsing date and memoize parser?
-(defn get-post-date [post]
-  "Given a post record, extract the date from the metadata if possible,
-  in format YYYY-MM-DD, otherwise get the creation date of the src post."
-  (let [date (:date (:metadata post))]
+(defn get-asset-date [asset]
+  "Given an asset record, extract the date from the metadata if possible,
+  in format YYYY-MM-DD, otherwise get the creation date of the src asset."
+  (let [date (:date (:metadata asset))]
     (if (nil? date)
-      (-> (file-attributes (:src-path post)) (.creationTime) (.toMillis) (Date.))
+      (-> (file-attributes (:src-path asset)) (.creationTime) (.toMillis) (Date.))
       (-> (SimpleDateFormat. "yyyy-MM-dd") (.parse date (ParsePosition. 0))))))
 
 ; TODO dest-path should be a file - currently it's a string
-(defn convert-posts [posts dest-posts-path]
-  "Given a seq of posts, convert them to html"
+(defn prepare-asset-for-export [assets dest-path]
+  "Given a seq of processed md assets, convert them to html"
   (letfn [(html-filename [file] (with-ext (.getName file) "html"))]
     (map #(assoc %
-            :html (md-to-html-string (:body %))
-            :dest-path (str dest-posts-path "/" (html-filename (:src-path %)))
+;            :html (md-to-html-string (:body %))
+            :dest-path (str dest-path "/" (html-filename (:src-path %)))
             :url (str "/posts/" (html-filename (:src-path %))))
-         posts)))
+         assets)))
 
-
-(defn write-posts [posts templates-path]
-  "Output all posts"
+; TODO Run templating before conerting to html!
+(defn write-assets [assets-to-write all-assets templates-path]
+  "Output all processed assets"
   (let [post-template (slurp (str templates-path "/post.html"))]
-    (doseq [post posts]
-      (spit (:dest-path post)
+    (doseq [asset assets-to-write]
+      (spit (:dest-path asset)
             (render post-template
-                    {:title (:title post)
-                     :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-post-date post)))
-                     :post (:html post)})))))
+                    {:title (:title asset)
+                     :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset)))
+                     :asset (:html asset)
+                     :posts (:posts all-assets)
+                     :pages (:pages all-assets)})))))
 
 ; TODO title should be data driven
 ; TODO make generic page generator?
@@ -105,19 +111,29 @@
 
 
 (def src-posts-path "assets/posts")
+(def src-pages-path "assets/pages")
 (def dest-posts-path "site/posts")
+(def dest-pages-path "site/pages")
 (def templates-path "assets/templates")
 (def dest-root-path "site")
 
 
+; TODO Write function to process asset
 (defn build-site []
-  ; Bit of a hack to create the folder - better way?
-  (jio/make-parents (str dest-posts-path "/x"))
-  (let [posts (-> (gather-posts src-posts-path)
-                  (convert-posts dest-posts-path))]
-    (write-posts posts templates-path)
+  ; Bit of a hack to create the folders - better way?
+  (map #(jio/make-parents (str % "/x"))
+       [dest-posts-path dest-pages-path])
+  
+  (let [posts (-> (gather-md-assets src-posts-path)
+                  (prepare-asset-for-export dest-posts-path))
+        pages (-> (gather-md-assets src-pages-path)
+                  (prepare-asset-for-export dest-pages-path))
+        all-assets {:posts posts :pages pages}]
+    (write-assets posts all-assets templates-path)
+    (write-assets pages all-assets templates-path)
     (doseq [p posts] (println "Converted" (:dest-path p)))
-    (generate-homepage posts templates-path dest-root-path)))
+    (doseq [p pages] (println "Converted" (:dest-path p)))))
+    ;(generate-homepage posts templates-path dest-root-path)))
 
 
 (defn- on-posts-changed [post-files]
