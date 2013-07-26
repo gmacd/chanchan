@@ -1,7 +1,8 @@
 title: Graham MacDonald's Fascinating Insights Into Various Topics!
 ----
-xxx
-{{{abc}}}
-{{&xyz}}
-{{posts}}
-yyy
+xxx12
+{{boo}}
+{{#posts}}
+* {{url}}
+{{/posts}}
+yyy1

@@ -13,7 +13,10 @@
            (java.nio.file.attribute BasicFileAttributes)))
 
 ; TODO Remove ring dependencies
+; TODO Move server/watch related code to seperate file
 ; TODO Move generic file-related function
+; TODO Load templates and cache them
+; TODO Directly add all metadata into map for replacement?
 
 (defn file-attributes [file]
   "Return the file BasicFileAttributes of file.  File can be a file or a string
@@ -61,12 +64,6 @@
      :title (:title metadata)
      :body md}))
 
-(defn gather-md-assets [src-path]
-  "Scan all md files, returning a collection of records containing the processed
-   md file and any metadata."
-  (->> (files-with-extension src-path ".md")
-       (map read-md-asset)))
-
 ; TODO - will a new SimpleDateFormat and ParsePosition get created each time this is called?
 ; Create func for parsing date and memoize parser?
 (defn get-asset-date [asset]
@@ -78,62 +75,66 @@
       (-> (SimpleDateFormat. "yyyy-MM-dd") (.parse date (ParsePosition. 0))))))
 
 ; TODO dest-path should be a file - currently it's a string
-(defn prepare-asset-for-export [assets dest-path]
+(defn prepare-asset-for-export [asset dest-path]
   "Given a seq of processed md assets, convert them to html"
-  (letfn [(html-filename [file] (with-ext (.getName file) "html"))]
-    (map #(assoc %
-;            :html (md-to-html-string (:body %))
-            :dest-path (str dest-path "/" (html-filename (:src-path %)))
-            :url (str "/posts/" (html-filename (:src-path %))))
-         assets)))
+  (let [html-filename (with-ext (.getName (:src-path asset)) "html")]
+    (assoc asset
+      :dest-path (str dest-path "/" html-filename)
+      :url (str "/posts/" html-filename))))
 
-; TODO Run templating before conerting to html!
-(defn write-assets [assets-to-write all-assets templates-path]
-  "Output all processed assets"
-  (let [post-template (slurp (str templates-path "/post.html"))]
-    (doseq [asset assets-to-write]
-      (spit (:dest-path asset)
-            (render post-template
-                    {:title (:title asset)
-                     :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset)))
-                     :asset (:html asset)
-                     :posts (:posts all-assets)
-                     :pages (:pages all-assets)})))))
+(defn replace-asset-variables [asset all-assets templates-path]
+  (assoc asset
+    :replaced-asset 
+    (let [post-template (slurp (str templates-path "/post.md"))]
+      (render post-template
+              {:title (:title asset)
+               :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset)))
+               :asset (:body asset)
+               :boo "boo!"
+               :posts (:posts all-assets)
+               :pages (:pages all-assets)}))))
 
-; TODO title should be data driven
-; TODO make generic page generator?
-(defn generate-homepage [posts src-path dest-path]
-  (spit (str dest-path "/index.html")
-        (-> (slurp (str src-path "/index.html"))
-            (render {:title "wot?"
-                     :posts posts})))
-  (println "Converted homepage"))
+(defn export-asset-as-html [asset templates-path]
+  (let [body (md-to-html-string (:replaced-asset asset))
+        html-template (slurp (str templates-path "/default.html"))
+        html (render html-template
+                     {:title (:title asset)
+                      :body body})]
+    (spit (:dest-path asset) html)))
 
+(def asset-types
+  {:post {:src-path "assets/posts"
+          :dest-path "site/posts"}
+   :page {:src-path "assets/pages"
+          :dest-path "site/pages"}})
 
-(def src-posts-path "assets/posts")
-(def src-pages-path "assets/pages")
-(def dest-posts-path "site/posts")
-(def dest-pages-path "site/pages")
 (def templates-path "assets/templates")
 (def dest-root-path "site")
 
 
-; TODO Write function to process asset
 (defn build-site []
   ; Bit of a hack to create the folders - better way?
   (map #(jio/make-parents (str % "/x"))
-       [dest-posts-path dest-pages-path])
-  
-  (let [posts (-> (gather-md-assets src-posts-path)
-                  (prepare-asset-for-export dest-posts-path))
-        pages (-> (gather-md-assets src-pages-path)
-                  (prepare-asset-for-export dest-pages-path))
-        all-assets {:posts posts :pages pages}]
-    (write-assets posts all-assets templates-path)
-    (write-assets pages all-assets templates-path)
-    (doseq [p posts] (println "Converted" (:dest-path p)))
-    (doseq [p pages] (println "Converted" (:dest-path p)))))
-    ;(generate-homepage posts templates-path dest-root-path)))
+       [(:dest-path (:post asset-types)) (:dest-path (:page asset-types))])
+
+  ; Process pipeline func
+  (letfn [(preprocess-asset [asset dest-path]
+            (-> (read-md-asset asset)
+                (prepare-asset-for-export dest-path)))]
+    
+    ; Preprocess all assets
+    (let [posts (map #(preprocess-asset % (:dest-path (:post asset-types)))
+                     (files-with-extension (:src-path (:post asset-types)) ".md"))
+          pages (map #(preprocess-asset % (:dest-path (:page asset-types)))
+                     (files-with-extension (:src-path (:page asset-types)) ".md"))
+          all-assets {:posts posts :pages pages}]
+
+      ; Variable replacement
+      (let [all-assets-for-export
+            (map #(replace-asset-variables % all-assets templates-path)
+                 (concat posts pages))]
+        (doall (map #(export-asset-as-html % templates-path)
+                    all-assets-for-export))))))
 
 
 (defn- on-posts-changed [post-files]
@@ -143,7 +144,8 @@
   (build-site))
 
 ; File watcher future for .md posts
-(def post-watcher (watcher src-posts-path
+; TODO watch more than just posts
+(def post-watcher (watcher (:src-path (:post asset-types))
                            (rate 50)
                            (file-filter ignore-dotfiles)
                            (file-filter (extensions :md))
