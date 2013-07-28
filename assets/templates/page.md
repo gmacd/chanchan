@@ -1,4 +1,4 @@
-<div class="post">
+<div class="page">
 
 # {{title}}
 ##### {{date}}
