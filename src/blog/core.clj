@@ -1,12 +1,12 @@
 (ns blog.core
   (:require [clojure.java.io :as jio]
-            [clojure.string :as string])
-  (:use [markdown.core :only (md-to-html-string)]
-        clostache.parser
-        watchtower.core
-        ring.adapter.jetty
-        ring.util.response
-        [ring.middleware resource file file-info])
+            [clojure.string :as string]
+            [markdown.core :refer [md-to-html-string]]
+            [clostache.parser :refer [render]]
+            [watchtower.core :refer [watcher on-change file-filter rate ignore-dotfiles extensions]]
+            [ring.adapter.jetty :refer [run-jetty]]
+            [ring.util.response :refer [response]]
+            [ring.middleware.file :refer [wrap-file]])
   (:import (java.text SimpleDateFormat ParsePosition)
            (java.util Date)
            (java.nio.file Files LinkOption)
@@ -17,6 +17,18 @@
 ; TODO Move generic file-related function
 ; TODO Load templates and cache them
 ; TODO Directly add all metadata into map for replacement?
+
+(def asset-types
+  {:post {:src-path "assets/posts"
+          :dest-path "site/posts"
+          :template "post.md"}
+   :page {:src-path "assets/pages"
+          :dest-path "site/pages"
+          :template "page.md"}})
+
+(defn asset-type [asset]
+  "Return the asset-type record for a given asset"
+  ((:asset-type asset) asset-types))
 
 (defn file-attributes [file]
   "Return the file BasicFileAttributes of file.  File can be a file or a string
@@ -85,12 +97,11 @@
 (defn replace-asset-variables [asset all-assets templates-path]
   (assoc asset
     :replaced-asset 
-    (let [post-template (slurp (str templates-path "/post.md"))]
+    (let [post-template (slurp (str templates-path "/" (:template (asset-type asset))))]
       (render post-template
               {:title (:title asset)
                :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset)))
                :asset (:body asset)
-               :boo "boo!"
                :posts (:posts all-assets)
                :pages (:pages all-assets)}))))
 
@@ -102,12 +113,6 @@
                       :body body})]
     (spit (:dest-path asset) html)))
 
-(def asset-types
-  {:post {:src-path "assets/posts"
-          :dest-path "site/posts"}
-   :page {:src-path "assets/pages"
-          :dest-path "site/pages"}})
-
 (def templates-path "assets/templates")
 (def dest-root-path "site")
 
@@ -118,14 +123,15 @@
        [(:dest-path (:post asset-types)) (:dest-path (:page asset-types))])
 
   ; Process pipeline func
-  (letfn [(preprocess-asset [asset dest-path]
+  (letfn [(preprocess-asset [asset asset-type]
             (-> (read-md-asset asset)
-                (prepare-asset-for-export dest-path)))]
+                (assoc :asset-type asset-type)
+                (prepare-asset-for-export (:dest-path (asset-type asset-types)))))]
     
     ; Preprocess all assets
-    (let [posts (map #(preprocess-asset % (:dest-path (:post asset-types)))
+    (let [posts (map #(preprocess-asset % :post)
                      (files-with-extension (:src-path (:post asset-types)) ".md"))
-          pages (map #(preprocess-asset % (:dest-path (:page asset-types)))
+          pages (map #(preprocess-asset % :page)
                      (files-with-extension (:src-path (:page asset-types)) ".md"))
           all-assets {:posts posts :pages pages}]
 
