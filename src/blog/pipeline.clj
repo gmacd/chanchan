@@ -116,7 +116,8 @@
 (defn build-site []
   ; Bit of a hack to create the folders - better way?
   (map #(jio/make-parents (str % "/x"))
-       [(:dest-path (:post asset-types)) (:dest-path (:page asset-types))])
+       [(:dest-path (:post asset-types))
+        (:dest-path (:page asset-types))])
 
   ; Preprocess all assets
   (let [posts (preprocess-assets :post)
