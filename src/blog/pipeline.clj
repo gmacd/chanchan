@@ -9,6 +9,7 @@
 
 ; TODO Load templates and cache them
 ; TODO Directly add all metadata into map for replacement?
+; TODO Post sorting?
 
 (def templates-path "assets/templates")
 (def dest-root-path "site")
@@ -25,6 +26,16 @@
 (defn asset-type [asset]
   "Return the asset-type record for a given asset"
   ((:asset-type asset) asset-types))
+
+; TODO - will a new SimpleDateFormat and ParsePosition get created each time this is called?
+; Create func for parsing date and memoize parser?
+(defn get-asset-date [asset]
+  "Given an asset record, extract the date from the metadata if possible,
+  in format YYYY-MM-DD, otherwise get the creation date of the src asset."
+  (let [date (:date (:metadata asset))]
+    (if (nil? date)
+      (-> (file-attributes (:src-path asset)) (.creationTime) (.toMillis) (Date.))
+      (-> (SimpleDateFormat. "yyyy-MM-dd") (.parse date (ParsePosition. 0))))))
 
 (defn metadata-string->map [metadata]
   "Given string of several lines of form 'key1:value1', return map of kvps."
@@ -49,23 +60,14 @@
      :title (:title metadata)
      :body md}))
 
-; TODO - will a new SimpleDateFormat and ParsePosition get created each time this is called?
-; Create func for parsing date and memoize parser?
-(defn get-asset-date [asset]
-  "Given an asset record, extract the date from the metadata if possible,
-  in format YYYY-MM-DD, otherwise get the creation date of the src asset."
-  (let [date (:date (:metadata asset))]
-    (if (nil? date)
-      (-> (file-attributes (:src-path asset)) (.creationTime) (.toMillis) (Date.))
-      (-> (SimpleDateFormat. "yyyy-MM-dd") (.parse date (ParsePosition. 0))))))
-
 ; TODO dest-path should be a file - currently it's a string
 (defn prepare-asset-for-export [asset dest-path]
   "Given a seq of processed md assets, convert them to html"
   (let [html-filename (with-ext (.getName (:src-path asset)) "html")]
     (assoc asset
       :dest-path (str dest-path "/" html-filename)
-      :url (str "/posts/" html-filename))))
+      :url (str "/posts/" html-filename)
+      :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset))))))
 
 (defn preprocess-asset [asset-path asset-type]
   "First step of the pipeline, given an asset path and its type, returns an
