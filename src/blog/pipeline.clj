@@ -18,9 +18,11 @@
 (def asset-types
   {:post {:src-path "assets/posts"
           :dest-path "site/posts"
+          :url "/posts/"
           :template "post.md"}
    :page {:src-path "assets/pages"
           :dest-path "site/pages"
+          :url "/pages/"
           :template "page.md"}})
 
 (defn asset-type [asset]
@@ -66,7 +68,7 @@
   (let [html-filename (with-ext (.getName (:src-path asset)) "html")]
     (assoc asset
       :dest-path (str dest-path "/" html-filename)
-      :url (str "/posts/" html-filename)
+      :url (str (:url (asset-type asset)) html-filename)
       :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset))))))
 
 (defn preprocess-asset [asset-path asset-type]
@@ -126,4 +128,9 @@
           (map #(replace-asset-variables % all-assets templates-path)
                (concat posts pages))]
       (doall (map #(export-asset-as-html % templates-path)
-                  all-assets-for-export)))))
+                  all-assets-for-export)))
+
+    ; If index.html exists, copy it to the root folder
+    (let [index-page (first (filter #(.endsWith (:url %) "/pages/index.html") pages))]
+      (if-not (nil? index-page)
+        (jio/copy (jio/file (:dest-path index-page)) (jio/file "site/index.html"))))))
