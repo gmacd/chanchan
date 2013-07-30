@@ -1,5 +1,6 @@
 (ns blog.core
-  (:require [watchtower.core :refer [watcher on-change file-filter rate ignore-dotfiles extensions]]
+  (:require [clojure.java.io :as jio]
+            [watchtower.core :refer [watcher on-change file-filter rate ignore-dotfiles extensions]]
             [blog.pipeline :refer [build-site asset-types]]
             [blog.server :refer [launch-server]]))
 
@@ -12,8 +13,20 @@
 ;                clean - remove all generated files (pages, posts, index.html)
 ;                help - (default)
 
+; TODO confirm overwrites
+; TODO config file with blog title + other things?  If so, remove hard-coded
+;      title from index template.
 (defn create [args]
-  (println "create: " args))
+  (println " Creating new blog files...")
+  
+  ; Create folders
+  (map #(jio/make-parents (str % "/x"))
+       [(:dest-path (:post asset-types))
+        (:dest-path (:page asset-types))])
+
+  ; Copy index
+  (jio/copy (jio/file (jio/resource "pages/index.md"))
+            (jio/file (str (:dest-path (:page asset-types)) "/index.md"))))
 
 (defn post [args]
   (println "new post: " args))

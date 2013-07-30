@@ -49,12 +49,12 @@
 
 ; TODO Pull metadata up into asset level?
 (defn read-md-asset [src-asset-path]
-  "Read in a post or page from src-asset-path. Content should be split by '----'
+  "Read in a post or page from src-asset-path. Content should be split by ';;;;'
    alone on a line.  If two parts exist, first part is considered metadata, one
    per line, keys and values seperated by ':'.  Second part is Markdown content.
    If no split, entire message is considered Markdown content."
   (let [contents (slurp src-asset-path)
-        [md raw-metadata] (reverse (string/split contents #"[\r\n]+-+[\r\n]+" 2))
+        [md raw-metadata] (reverse (string/split contents #"[\r\n]+;+[\r\n]+" 2))
         metadata (metadata-string->map raw-metadata)]
     {:metadata metadata
      :src-path src-asset-path
