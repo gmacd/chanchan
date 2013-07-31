@@ -2,7 +2,8 @@
   (:require [clojure.java.io :as jio]
             [watchtower.core :refer [watcher on-change file-filter rate ignore-dotfiles extensions]]
             [blog.pipeline :refer [build-site asset-types]]
-            [blog.server :refer [launch-server]]))
+            [blog.server :refer [launch-server]])
+  (:gen-class))
 
 ; TODO Move watch related code to seperate file?
 ; TODO Support disqus comments
@@ -13,20 +14,28 @@
 ;                clean - remove all generated files (pages, posts, index.html)
 ;                help - (default)
 
+(defn pwd []
+  "Return the current working directory"
+  (System/getProperty "user.dir"))
+
+
 ; TODO confirm overwrites
 ; TODO config file with blog title + other things?  If so, remove hard-coded
 ;      title from index template.
 (defn create [args]
   (println " Creating new blog files...")
-  
-  ; Create folders
-  (map #(jio/make-parents (str % "/x"))
-       [(:dest-path (:post asset-types))
-        (:dest-path (:page asset-types))])
+  (let [post-path (str (pwd) "/" (:dest-path (:post asset-types)))
+        page-path (str (pwd) "/" (:dest-path (:page asset-types)))]
+    
+    ; Create folders
+    (.mkdirs (jio/file post-path))
+    (.mkdirs (jio/file page-path))
+    (println " Created folder: " post-path)
+    (println " Created folder: " page-path)
 
-  ; Copy index
-  (jio/copy (jio/file (jio/resource "pages/index.md"))
-            (jio/file (str (:dest-path (:page asset-types)) "/index.md"))))
+    ; Copy index
+    (jio/copy (jio/file (jio/resource "pages/index.md"))
+              (jio/file (str (pwd) "/" (:dest-path (:page asset-types)) "/index.md")))))
 
 (defn post [args]
   (println "new post: " args))
@@ -36,7 +45,7 @@
 
 ; TODO Port override
 (defn server [args]
-  (build-site)
+  (build-site (pwd))
   (launch-server))
 
 (def commands {:create [create "Create blog at given (existing) path.\n E.g. 'chanchan create mynewblog'"]
@@ -67,4 +76,4 @@
 ;                           (on-change on-posts-changed)))
 
 (defn -main [& args]
-  (dispatch-commands))
+  (dispatch-command args))

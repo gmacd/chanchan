@@ -71,17 +71,18 @@
       :url (str (:url (asset-type asset)) html-filename)
       :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset))))))
 
-(defn preprocess-asset [asset-path asset-type]
+; TODO Sanitise path handling.  Not great that we pass pwd & full asset path...
+(defn preprocess-asset [asset-path asset-type pwd]
   "First step of the pipeline, given an asset path and its type, returns an
    asset record."
   (-> (read-md-asset asset-path)
       (assoc :asset-type asset-type)
-      (prepare-asset-for-export (:dest-path (asset-type asset-types)))))
+      (prepare-asset-for-export (str pwd "/" (:dest-path (asset-type asset-types))))))
 
-(defn preprocess-assets [asset-type]
+(defn preprocess-assets [asset-type pwd]
   "Given an asset type, return a collection of all asset records of that type."
-  (map #(preprocess-asset % asset-type)
-       (files-with-extension (:src-path (asset-type asset-types)) ".md")))
+  (map #(preprocess-asset % asset-type pwd)
+       (files-with-extension (str pwd "/" (:src-path (asset-type asset-types))) ".md")))
 
 (defn replace-vars [text asset all-assets]
   "Return the given text, with {{foo}} vars replaced."
@@ -113,15 +114,10 @@
     (spit (:dest-path asset) html)))
 
 
-(defn build-site []
-  ; Bit of a hack to create the folders - better way?
-  (map #(jio/make-parents (str % "/x"))
-       [(:dest-path (:post asset-types))
-        (:dest-path (:page asset-types))])
-
+(defn build-site [pwd]
   ; Preprocess all assets
-  (let [posts (preprocess-assets :post)
-        pages (preprocess-assets :page)
+  (let [posts (preprocess-assets :post pwd)
+        pages (preprocess-assets :page pwd)
         all-assets {:posts posts :pages pages}]
 
     ; Variable replacement
