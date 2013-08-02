@@ -10,9 +10,17 @@
 ; TODO Load templates and cache them
 ; TODO Directly add all metadata into map for replacement?
 ; TODO Post sorting?
+; TODO Could I improve this with dynamic private vars?
+;      Seems a suitable place.
+;      e.g. (def ^:private ^:dynamic *assets*) ; Or asset?
+;           (binding [*assets* (my-asset)] (blah))
+;      Then can use it without passing it into funcs
+; TODO System object to store all app state -> core
+;      Can have constructor for cmd line app, one for dev repl use, etc.
+; Cascading key lookups: (-> asset :metadata :title)!!!
 
-(def templates-path "assets/templates")
-(def dest-root-path "site")
+(def ^:const templates-path "assets/templates")
+(def ^:const dest-root-path "site")
 
 ; TODO Remove the :src-path and :dest-path from the asset record & use asset-type
 (def asset-types
