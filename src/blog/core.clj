@@ -14,8 +14,8 @@
 ;                clean - remove all generated files (pages, posts, index.html)
 ;                help - (default)
 
-(defn pwd []
-  "Return the current working directory"
+(defn start-dir []
+  "Return the app start dir"
   (System/getProperty "user.dir"))
 
 
@@ -24,8 +24,8 @@
 ;      title from index template.
 (defn create [args]
   (println " Creating new blog files...")
-  (let [post-path (str (pwd) "/" (:dest-path (:post asset-types)))
-        page-path (str (pwd) "/" (:dest-path (:page asset-types)))]
+  (let [post-path (str (start-dir) "/" (:dest-path (:post asset-types)))
+        page-path (str (start-dir) "/" (:dest-path (:page asset-types)))]
     
     ; Create folders
     (.mkdirs (jio/file post-path))
@@ -45,7 +45,7 @@
 
 ; TODO Port override
 (defn server [args]
-  (build-site (pwd))
+  (build-site (start-dir))
   (launch-server))
 
 (def commands {:create [create "Create blog at given (existing) path.\n E.g. 'chanchan create mynewblog'"]

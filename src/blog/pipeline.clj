@@ -23,7 +23,7 @@
 (def ^:const dest-root-path "site")
 
 ; TODO Remove the :src-path and :dest-path from the asset record & use asset-type
-(def asset-types
+(def ^:const asset-types
   {:post {:src-path "assets/posts"
           :dest-path "site/posts"
           :url "/posts/"
@@ -79,18 +79,19 @@
       :url (str (:url (asset-type asset)) html-filename)
       :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset))))))
 
-; TODO Sanitise path handling.  Not great that we pass pwd & full asset path...
-(defn preprocess-asset [asset-path asset-type pwd]
+(defn preprocess-asset [asset-path asset-type dest-path]
   "First step of the pipeline, given an asset path and its type, returns an
    asset record."
   (-> (read-md-asset asset-path)
       (assoc :asset-type asset-type)
-      (prepare-asset-for-export (str pwd "/" (:dest-path (asset-type asset-types))))))
+      (prepare-asset-for-export dest-path)))
 
-(defn preprocess-assets [asset-type pwd]
+(defn preprocess-assets [asset-type blog-path]
   "Given an asset type, return a collection of all asset records of that type."
-  (map #(preprocess-asset % asset-type pwd)
-       (files-with-extension (str pwd "/" (:src-path (asset-type asset-types))) ".md")))
+  (let [src-dir (str blog-path "/" (:dest-path (asset-type asset-types)))
+        dest-path (str blog-path "/" (:src-path (asset-type asset-types)))]
+    (map #(preprocess-asset % asset-type dest-path)
+       (files-with-extension src-dir ".md"))))
 
 (defn replace-vars [text asset all-assets]
   "Return the given text, with {{foo}} vars replaced."
@@ -122,10 +123,10 @@
     (spit (:dest-path asset) html)))
 
 
-(defn build-site [pwd]
+(defn build-site [blog-dir]
   ; Preprocess all assets
-  (let [posts (preprocess-assets :post pwd)
-        pages (preprocess-assets :page pwd)
+  (let [posts (preprocess-assets :post blog-dir)
+        pages (preprocess-assets :page blog-dir)
         all-assets {:posts posts :pages pages}]
 
     ; Variable replacement
