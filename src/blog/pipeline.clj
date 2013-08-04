@@ -27,11 +27,11 @@
   {:post {:src-path "assets/posts"
           :dest-path "site/posts"
           :url "/posts/"
-          :template "post.md"}
+          :template "post_wrapper.md"}
    :page {:src-path "assets/pages"
           :dest-path "site/pages"
           :url "/pages/"
-          :template "page.md"}})
+          :template "page_wrapper.md"}})
 
 (defn asset-type [asset]
   "Return the asset-type record for a given asset"
