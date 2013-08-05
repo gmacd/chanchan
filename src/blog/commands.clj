@@ -36,12 +36,18 @@
   ; TODO Convert title into filesystem-safe title
   (let [title (if (empty? args) "New-Post" (first args))
         date-str (-> (SimpleDateFormat. "yyyy-MM-dd") (.format (Date.)))
-        filename (str date-str "-" (.toLowerCase title) ".md")
+        dest-file (jio/file (str start-dir "/" (-> asset-types :post :src-path) "/"
+                                 (str date-str "-" (.toLowerCase title) ".md")))
         post-template (slurp (jio/resource "templates/post.md"))
         new-post (render post-template
                          {:title title
                           :date date-str})]
-    (spit (str start-dir "/" (-> asset-types :post :src-path) "/" filename) new-post)))
+    (if (.exists dest-file)
+      (println "Couldn't create new post.  The following file already exists:\n"
+               (.getCanonicalPath dest-file))
+      (do (spit dest-file new-post)
+          (println "Created new post:\n"
+                   (.getCanonicalPath dest-file))))))
 
 (defn page [args]
   (println "new page: " args))
