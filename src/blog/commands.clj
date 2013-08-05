@@ -16,7 +16,6 @@
 
 (def ^:const start-dir (System/getProperty "user.dir"))
 
-; TODO confirm overwrites
 ; TODO config file with blog title + other things?  If so, remove hard-coded
 ;      title from index template.
 (defn create [args]
@@ -29,8 +28,12 @@
     (println " Created folder: " path))
       
   ; Copy index
-  (jio/copy (jio/file (jio/resource "pages/index.md"))
-            (jio/file (str start-dir "/" (:dest-path (:page asset-types)) "/index.md"))))
+  (let [dest-file (str start-dir "/" (:dest-path (:page asset-types)) "/index.md")]
+    (if (.exists dest-file)
+      (println "Couldn't create index for new blog.  The following file already exists:\n"
+               (.getCanonicalPath dest-file))
+      (do (jio/copy (jio/file (jio/resource "pages/index.md")) dest-file)
+          (println "Created index:\n" (.getCanonicalPath dest-file))))))
 
 (defn post [args]
   ; TODO Convert title into filesystem-safe title
@@ -50,7 +53,20 @@
                    (.getCanonicalPath dest-file))))))
 
 (defn page [args]
-  (println "new page: " args))
+  ; TODO Convert title into filesystem-safe title
+  (let [title (if (empty? args) "New-Page" (first args))
+        date-str (-> (SimpleDateFormat. "yyyy-MM-dd") (.format (Date.)))
+        dest-file (jio/file (str start-dir "/" (-> asset-types :page :src-path) "/"
+                                 (str date-str "-" (.toLowerCase title) ".md")))
+        page-template (slurp (jio/resource "templates/page.md"))
+        new-page (render page-template
+                         {:title title})]
+    (if (.exists dest-file)
+      (println "Couldn't create new page.  The following file already exists:\n"
+               (.getCanonicalPath dest-file))
+      (do (spit dest-file new-page)
+          (println "Created new page:\n"
+                   (.getCanonicalPath dest-file))))))
 
 ; TODO Port override
 (defn server [args]
