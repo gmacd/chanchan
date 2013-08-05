@@ -1,5 +1,6 @@
 (ns blog.commands
   (:require [clojure.java.io :as jio]
+            [clostache.parser :refer [render]]
             [blog.pipeline :refer [build-site asset-types]]
             [blog.server :refer [launch-server]])
   (:import (java.text SimpleDateFormat ParsePosition)
@@ -19,7 +20,7 @@
 ; TODO config file with blog title + other things?  If so, remove hard-coded
 ;      title from index template.
 (defn create [args]
-  (println " Creating new blog files...")
+  (println " Creating new blog...")
   (doseq [path (map #(str start-dir "/" %) [(-> asset-types :page :dest-path)
                                             (-> asset-types :post :dest-path)
                                             (-> asset-types :page :src-path)
@@ -34,10 +35,13 @@
 (defn post [args]
   ; TODO Convert title into filesystem-safe title
   (let [title (if (empty? args) "New-Post" (first args))
-        filename (str (-> (SimpleDateFormat. "yyyy-MM-dd") (.format (Date.)))
-                      "-" title ".md")]
-    (jio/copy (jio/file (jio/resource "templates/post.md"))
-              (jio/file (str start-dir "/" (:src-path (:post asset-types)) "/" filename)))))
+        date-str (-> (SimpleDateFormat. "yyyy-MM-dd") (.format (Date.)))
+        filename (str date-str "-" (.toLowerCase title) ".md")
+        post-template (slurp (jio/resource "templates/post.md"))
+        new-post (render post-template
+                         {:title title
+                          :date date-str})]
+    (spit (str start-dir "/" (-> asset-types :post :src-path) "/" filename) new-post)))
 
 (defn page [args]
   (println "new page: " args))
