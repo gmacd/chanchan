@@ -110,7 +110,7 @@
   ; Replace vars in the asset body
   (let [asset (assoc asset
                 :body (replace-vars (:body asset) asset all-assets))
-        post-template (slurp (str templates-path "/" (:template (asset-type asset))))]
+        post-template (slurp (jio/resource "templates/page_wrapper.md"))]
     ; Now replace vars in the asset type body
     (assoc asset
       :replaced-asset (replace-vars post-template asset all-assets))))

@@ -19,7 +19,7 @@
 ; TODO config file with blog title + other things?  If so, remove hard-coded
 ;      title from index template.
 (defn create [args]
-  (println " Creating new blog...")
+  (println "Creating new blog...")
   (doseq [path (map #(str start-dir "/" %) [(-> asset-types :page :dest-path)
                                             (-> asset-types :post :dest-path)
                                             (-> asset-types :page :src-path)
@@ -28,7 +28,7 @@
     (println " Created folder: " path))
       
   ; Copy index
-  (let [dest-file (str start-dir "/" (:dest-path (:page asset-types)) "/index.md")]
+  (let [dest-file (jio/file (str start-dir "/" (:dest-path (:page asset-types)) "/index.md"))]
     (if (.exists dest-file)
       (println "Couldn't create index for new blog.  The following file already exists:\n"
                (.getCanonicalPath dest-file))
@@ -68,6 +68,9 @@
           (println "Created new page:\n"
                    (.getCanonicalPath dest-file))))))
 
+(defn build [args]
+  (build-site start-dir))
+
 ; TODO Port override
 (defn server [args]
   (build-site start-dir)
@@ -77,6 +80,7 @@
   {:create [create "Create blog at given (existing) path.\n E.g. 'chanchan create mynewblog'"]
    :post [post "Create a new post with todays data and the given filename title.\n E.g. 'chanchan post my-next-post' will create a new post with the filename composed of the current date and given title."]
    :page [page "Create a new page with the given filename title.\n E.g. 'chanchan page my-new-page' will create a new page with a filename of the given title."]
+   :build [build "Rebuild the blog, re-exporting all posts and pages."]
    :server [server "Launch the server at the specified port. If unspecified, use port 3000."]})
 
 ; TODO help if command not found
