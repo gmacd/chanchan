@@ -3,9 +3,9 @@
             [clojure.string :as string]
             [markdown.core :refer [md-to-html-string]]
             [clostache.parser :refer [render]]
-            [blog.file :refer [file-attributes with-ext files-with-extension]])
-  (:import (java.text SimpleDateFormat ParsePosition)
-           (java.util Date)))
+            [clj-time.coerce :refer [from-long]]
+            [clj-time.format :refer [formatter parse unparse]]
+            [blog.file :refer [file-attributes with-ext files-with-extension]]))
 
 ; TODO Load templates and cache them
 ; TODO Directly add all metadata into map for replacement?
@@ -17,6 +17,9 @@
 ;      Then can use it without passing it into funcs
 ; TODO System object to store all app state -> core
 ;      Can have constructor for cmd line app, one for dev repl use, etc.
+
+(def asset-date-formatter (formatter "yyyy-MM-dd"))
+(def display-date-formatter (formatter "d MMMM yyy"))
 
 (def ^:const templates-path "assets/templates")
 (def ^:const dest-root-path "site")
@@ -36,15 +39,13 @@
   "Return the asset-type record for a given asset"
   ((:asset-type asset) asset-types))
 
-; TODO - will a new SimpleDateFormat and ParsePosition get created each time this is called?
-; Create func for parsing date and memoize parser?
 (defn get-asset-date [asset]
   "Given an asset record, extract the date from the metadata if possible,
   in format YYYY-MM-DD, otherwise get the creation date of the src asset."
   (let [date (:date (:metadata asset))]
     (if (nil? date)
-      (-> (file-attributes (:src-path asset)) (.creationTime) (.toMillis) (Date.))
-      (-> (SimpleDateFormat. "yyyy-MM-dd") (.parse date (ParsePosition. 0))))))
+      (-> (file-attributes (:src-path asset)) (.creationTime) (.toMillis) (from-long))
+      (-> (parse asset-date-formatter date)))))
 
 (defn metadata-string->map [metadata]
   "Given string of several lines of form 'key1:value1', return map of kvps."
@@ -81,7 +82,7 @@
     (assoc asset
       :dest-path (str dest-path "/" html-filename)
       :url (str (:url (asset-type asset)) html-filename)
-      :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset))))))
+      :date (unparse display-date-formatter (get-asset-date asset)))))
 
 (defn preprocess-asset [asset-path asset-type dest-path]
   "First step of the pipeline, given an asset path and its type, returns an
@@ -100,7 +101,7 @@
   "Return the given text, with {{foo}} vars replaced."
   (render text
           {:title (:title asset)
-           :date (-> (SimpleDateFormat. "d MMMM yyy") (.format (get-asset-date asset)))
+           :date (unparse display-date-formatter (get-asset-date asset))
            :asset (:body asset)
            :posts (:posts all-assets)
            :pages (:pages all-assets)}))
