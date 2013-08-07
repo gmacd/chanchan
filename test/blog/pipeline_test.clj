@@ -26,3 +26,13 @@
         post (assoc-in (basic-post) [:metadata :date] "2013-08-07")]
     (testing "Can get asset date from asset metadata"
       (is (= date (get-asset-date post))))))
+
+(deftest metadata-parsing
+  (testing "Can parse basic metadata"
+    (is (= {:abc "123" :def "xyz" :ghi "This is a test"}
+           (metadata-string->map "abc:123\ndef:xyz\nghi:This is a test")))
+    (is (= {}
+           (metadata-string->map "")))
+    (is (= {}
+           (metadata-string->map nil)))))
+
