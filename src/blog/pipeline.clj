@@ -17,7 +17,6 @@
 ;      Then can use it without passing it into funcs
 ; TODO System object to store all app state -> core
 ;      Can have constructor for cmd line app, one for dev repl use, etc.
-; Cascading key lookups: (-> asset :metadata :title)!!!
 
 (def ^:const templates-path "assets/templates")
 (def ^:const dest-root-path "site")
@@ -55,8 +54,10 @@
             (for [[k v] kvp-strings :when (not (string/blank? k))]
               [(keyword k) ((fnil string/trim "") v)])))))
 
+(defrecord Asset [asset-type metadata src-path title body])
+
 ; TODO Pull metadata up into asset level?
-(defn read-md-asset [src-asset-path]
+(defn read-md-asset [src-asset-path asset-type]
   "Read in a post or page from src-asset-path. Metadata is wrapped by '----'
    above and  below.  If two parts exist, first part is considered metadata, one
    per line, keys and values seperated by ':'.  Second part is Markdown content.
@@ -66,11 +67,12 @@
         [md raw-metadata] (reverse (filter #(not (empty? %))
                                            (string/split contents #"(?m)^-+$")))
         metadata (metadata-string->map raw-metadata)]
-    {:metadata metadata
-     :src-path src-asset-path
-     ; Need :title so replace-vars step can access it for asset collection
-     :title (:title metadata)
-     :body md}))
+    (map->Asset {:asset-type asset-type
+                 :metadata metadata
+                 :src-path src-asset-path
+                 ; Need :title so replace-vars step can access it for asset collection
+                 :title (:title metadata)
+                 :body md})))
 
 ; TODO dest-path should be a file - currently it's a string
 (defn prepare-asset-for-export [asset dest-path]
@@ -84,8 +86,7 @@
 (defn preprocess-asset [asset-path asset-type dest-path]
   "First step of the pipeline, given an asset path and its type, returns an
    asset record."
-  (-> (read-md-asset asset-path)
-      (assoc :asset-type asset-type)
+  (-> (read-md-asset asset-path asset-type)
       (prepare-asset-for-export dest-path)))
 
 (defn preprocess-assets [asset-type blog-path]

@@ -2,12 +2,18 @@
   (:require [clojure.test :refer :all]
             [blog.pipeline :refer :all]))
 
-(defn add2 [x] 
-  (+ x 2))
-
-(deftest test-adder
-  (is (= 24  (add2 22))))
+(def basic-post (map->Asset {:asset-type :post
+                          :metadata {}
+                          :src-path ""
+                          :title "New Post"
+                          :body "Post body...."}))
+(def basic-page (map->Asset {:asset-type :page
+                             :metadata {}
+                             :src-path ""
+                             :title "New Page"
+                             :body "Page body...."}))
 
 (deftest asset-types-correct
   (testing "Asset types"
-    (is (not (nil? (asset-type :post))))))
+    (is (= (:post asset-types) (asset-type basic-post)))
+    (is (= (:page asset-types) (asset-type basic-page)))))
