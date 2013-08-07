@@ -6,7 +6,6 @@
   (:import (java.text SimpleDateFormat ParsePosition)
            (java.util Date)))
 
-
 ; TODO Commands: create - create blog with default templates and folders
 ;                post - new post
 ;                page - new page

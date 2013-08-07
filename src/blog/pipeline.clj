@@ -61,9 +61,10 @@
    above and  below.  If two parts exist, first part is considered metadata, one
    per line, keys and values seperated by ':'.  Second part is Markdown content.
    If no split, entire message is considered Markdown content."
+  (println " Importing:" (.getCanonicalPath src-asset-path))
   (let [contents (slurp src-asset-path)
         [md raw-metadata] (reverse (filter #(not (empty? %))
-                                           (string/split contents #"[\r\n]*-+[\r\n]+" 2)))
+                                           (string/split contents #"(?m)^-+$")))
         metadata (metadata-string->map raw-metadata)]
     {:metadata metadata
      :src-path src-asset-path
@@ -89,8 +90,8 @@
 
 (defn preprocess-assets [asset-type blog-path]
   "Given an asset type, return a collection of all asset records of that type."
-  (let [src-dir (str blog-path "/" (:dest-path (asset-type asset-types)))
-        dest-path (str blog-path "/" (:src-path (asset-type asset-types)))]
+  (let [src-dir (str blog-path "/" (:src-path (asset-type asset-types)))
+        dest-path (str blog-path "/" (:dest-path (asset-type asset-types)))]
     (map #(preprocess-asset % asset-type dest-path)
        (files-with-extension src-dir ".md"))))
 
@@ -121,10 +122,12 @@
         html (render html-template
                      {:title (:title asset)
                       :body body})]
+    (println " Exporting" (:dest-path asset))
     (spit (:dest-path asset) html)))
 
-
 (defn build-site [blog-dir]
+  (println "Building blog:" blog-dir)
+  
   ; Preprocess all assets
   (let [posts (preprocess-assets :post blog-dir)
         pages (preprocess-assets :page blog-dir)
