@@ -73,22 +73,22 @@
                  :body (string/trim md)})))
 
 ; TODO dest-path should be a file - currently it's a string
-(defn prepare-asset-for-export [asset src-path dest-path]
+(defn prepare-asset-for-export [asset src-path dest-directory]
   "Given a seq of processed md assets, convert them to html"
   (let [html-filename (with-ext (.getName (:src-path asset)) "html")]
     (assoc asset
       :src-path src-path
-      :dest-path (str dest-path "/" html-filename)
+      :dest-path (str dest-directory "/" html-filename)
       :url (str (:url (asset-type asset)) html-filename)
       :date (unparse display-date-formatter (get-asset-date asset)))))
 
-(defn preprocess-asset [asset-path asset-type dest-path]
+(defn preprocess-asset [asset-path asset-type dest-directory]
   "First step of the pipeline, given an asset path and its type, returns an
    asset record."
   (println " Importing:" (.getCanonicalPath asset-path))
   (-> (slurp asset-path)
       (read-md-asset asset-type)
-      (prepare-asset-for-export asset-path dest-path)))
+      (prepare-asset-for-export asset-path dest-directory)))
 
 (defn preprocess-assets [asset-type blog-path]
   "Given an asset type, return a collection of all asset records of that type."

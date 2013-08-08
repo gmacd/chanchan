@@ -18,7 +18,7 @@
 ; TODO config file with blog title + other things?  If so, remove hard-coded
 ;      title from index template.
 (defn create [args]
-  (println "Creating new blog...")
+  (println "Creating new blog in:\n" start-dir)
   (doseq [path (map #(str start-dir "/" %) [(-> asset-types :page :dest-path)
                                             (-> asset-types :post :dest-path)
                                             (-> asset-types :page :src-path)
