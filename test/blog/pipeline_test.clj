@@ -36,3 +36,41 @@
     (is (= {}
            (metadata-string->map nil)))))
 
+(deftest reading-assets
+  (testing "Can read basic post"
+    (let [content (str "----\n"
+                       "title: My Title\n"
+                       "----\n"
+                       "This is my body\n")
+          asset (read-md-asset content :post)]
+      (is (= "This is my body"
+             (:body asset)))
+      (is (= "My Title"
+             (:title asset)))
+      (is (= :post
+             (:asset-type asset)))
+      (is (= {:title "My Title"}
+             (:metadata asset)))))
+  
+  (testing "Can read basic page"
+    (let [content (str "----\n"
+                       "title: My Title\n"
+                       "----\n"
+                       "This is my body\n")
+          asset (read-md-asset content :page)]
+      (is (= "This is my body"
+             (:body asset)))
+      (is (= "My Title"
+             (:title asset)))
+      (is (= :page
+             (:asset-type asset)))
+      (is (= {:title "My Title"}
+             (:metadata asset)))))
+  
+  (testing "Can read asset without metadata"
+    (let [content (str "This is my body\n")
+          asset (read-md-asset content :post)]
+      (is (= "This is my body"
+             (:body asset)))
+      (is (= :post
+             (:asset-type asset))))))

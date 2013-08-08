@@ -58,28 +58,26 @@
 (defrecord Asset [asset-type metadata src-path title body])
 
 ; TODO Pull metadata up into asset level?
-(defn read-md-asset [src-asset-path asset-type]
+(defn read-md-asset [asset-contents asset-type]
   "Read in a post or page from src-asset-path. Metadata is wrapped by '----'
    above and  below.  If two parts exist, first part is considered metadata, one
    per line, keys and values seperated by ':'.  Second part is Markdown content.
    If no split, entire message is considered Markdown content."
-  (println " Importing:" (.getCanonicalPath src-asset-path))
-  (let [contents (slurp src-asset-path)
-        [md raw-metadata] (reverse (filter #(not (empty? %))
-                                           (string/split contents #"(?m)^-+$")))
+  (let [[md raw-metadata] (reverse (filter #(not (empty? %))
+                                           (string/split asset-contents #"(?m)^-+$")))
         metadata (metadata-string->map raw-metadata)]
     (map->Asset {:asset-type asset-type
                  :metadata metadata
-                 :src-path src-asset-path
                  ; Need :title so replace-vars step can access it for asset collection
                  :title (:title metadata)
-                 :body md})))
+                 :body (string/trim md)})))
 
 ; TODO dest-path should be a file - currently it's a string
-(defn prepare-asset-for-export [asset dest-path]
+(defn prepare-asset-for-export [asset src-path dest-path]
   "Given a seq of processed md assets, convert them to html"
   (let [html-filename (with-ext (.getName (:src-path asset)) "html")]
     (assoc asset
+      :src-path src-path
       :dest-path (str dest-path "/" html-filename)
       :url (str (:url (asset-type asset)) html-filename)
       :date (unparse display-date-formatter (get-asset-date asset)))))
@@ -87,8 +85,10 @@
 (defn preprocess-asset [asset-path asset-type dest-path]
   "First step of the pipeline, given an asset path and its type, returns an
    asset record."
-  (-> (read-md-asset asset-path asset-type)
-      (prepare-asset-for-export dest-path)))
+  (println " Importing:" (.getCanonicalPath asset-path))
+  (-> (slurp asset-path)
+      (read-md-asset asset-type)
+      (prepare-asset-for-export asset-path dest-path)))
 
 (defn preprocess-assets [asset-type blog-path]
   "Given an asset type, return a collection of all asset records of that type."
