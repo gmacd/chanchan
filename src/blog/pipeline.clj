@@ -21,7 +21,6 @@
 (def asset-date-formatter (formatter "yyyy-MM-dd"))
 (def display-date-formatter (formatter "d MMMM yyy"))
 
-(def ^:const templates-path "assets/templates")
 (def ^:const dest-root-path "site")
 
 ; TODO Remove the :src-path and :dest-path from the asset record & use asset-type
@@ -75,12 +74,12 @@
 ; TODO dest-path should be a file - currently it's a string
 (defn prepare-asset-for-export [asset src-path dest-directory]
   "Given a seq of processed md assets, convert them to html"
-  (let [html-filename (with-ext (.getName (:src-path asset)) "html")]
-    (assoc asset
-      :src-path src-path
-      :dest-path (str dest-directory "/" html-filename)
-      :url (str (:url (asset-type asset)) html-filename)
-      :date (unparse display-date-formatter (get-asset-date asset)))))
+  (let [html-filename (with-ext (.getName src-path) "html")
+        asset (assoc asset
+                :src-path src-path
+                :dest-path (str dest-directory "/" html-filename)
+                :url (str (:url (asset-type asset)) html-filename))]
+    (assoc asset :date (unparse display-date-formatter (get-asset-date asset)))))
 
 (defn preprocess-asset [asset-path asset-type dest-directory]
   "First step of the pipeline, given an asset path and its type, returns an
@@ -107,7 +106,7 @@
            :pages (:pages all-assets)}))
 
 ; TODO Split two replacement operations?
-(defn replace-asset-variables [asset all-assets templates-path]
+(defn replace-asset-variables [asset all-assets]
   "First replace vars in the body of the asset, then in the asset once it's
    been insert into its asset type template."
   ; Replace vars in the asset body
@@ -118,9 +117,9 @@
     (assoc asset
       :replaced-asset (replace-vars post-template asset all-assets))))
 
-(defn export-asset-as-html [asset templates-path]
+(defn export-asset-as-html [asset]
   (let [body (md-to-html-string (:replaced-asset asset))
-        html-template (slurp (str templates-path "/default.html"))
+        html-template (slurp (jio/resource "templates/default.html"))
         html (render html-template
                      {:title (:title asset)
                       :body body})]
@@ -137,10 +136,9 @@
 
     ; Variable replacement
     (let [all-assets-for-export
-          (map #(replace-asset-variables % all-assets templates-path)
+          (map #(replace-asset-variables % all-assets)
                (concat posts pages))]
-      (doall (map #(export-asset-as-html % templates-path)
-                  all-assets-for-export)))
+      (doall (map #(export-asset-as-html %) all-assets-for-export)))
 
     ; If index.html exists, copy it to the root folder
     (let [index-page (first (filter #(.endsWith (:url %) "/pages/index.html") pages))]

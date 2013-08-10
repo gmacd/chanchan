@@ -27,12 +27,13 @@
     (println " Created folder: " path))
       
   ; Copy index
-  (let [dest-file (jio/file (str start-dir "/" (:dest-path (:page asset-types)) "/index.md"))]
-    (if (.exists dest-file)
+  (let [src-file (jio/file (str start-dir "/" (:src-path (:page asset-types)) "/index.md"))]
+    (if (.exists src-file)
       (println "Couldn't create index for new blog.  The following file already exists:\n"
-               (.getCanonicalPath dest-file))
-      (do (jio/copy (jio/file (jio/resource "pages/index.md")) dest-file)
-          (println "Created index:\n" (.getCanonicalPath dest-file))))))
+               (.getCanonicalPath src-file))
+      (with-open [index-reader (jio/reader (jio/resource "pages/index.md"))]
+        (jio/copy index-reader src-file)
+        (println "Created index:\n" (.getCanonicalPath src-file))))))
 
 (defn post [args]
   ; TODO Convert title into filesystem-safe title
