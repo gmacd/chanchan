@@ -62,14 +62,16 @@
    above and  below.  If two parts exist, first part is considered metadata, one
    per line, keys and values seperated by ':'.  Second part is Markdown content.
    If no split, entire message is considered Markdown content."
-  (let [[md raw-metadata] (reverse (filter #(not (empty? %))
-                                           (string/split asset-contents #"(?m)^-+$")))
+  (let [[raw-metadata md] (filter #(not (empty? %))
+                                  (string/split asset-contents #"(?m)^-+$" 3))
         metadata (metadata-string->map raw-metadata)]
-    (map->Asset {:asset-type asset-type
-                 :metadata metadata
-                 ; Need :title so replace-vars step can access it for asset collection
-                 :title (:title metadata)
-                 :body (string/trim md)})))
+    (if (and (not (nil? raw-metadata)) (not (nil? md)))
+      (map->Asset {:asset-type asset-type
+                   :metadata metadata
+                                        ; Need :title so replace-vars step can access it for asset collection
+                   :title (:title metadata)
+                 :body (string/trim md)})
+      (println " Asset doesn't declare both metadata and a body"))))
 
 ; TODO dest-path should be a file - currently it's a string
 (defn prepare-asset-for-export [asset src-path dest-directory]

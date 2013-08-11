@@ -9,8 +9,6 @@
 (defn handler [request]
   (response "hello world"))
 
-(def app
-  (wrap-file handler "site/"))
-
 (defn launch-server []
-  (run-jetty app {:port 3000}))
+  (let [app (wrap-file handler "site/")]
+    (run-jetty app {:port 3000})))

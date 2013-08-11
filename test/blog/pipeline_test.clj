@@ -67,10 +67,19 @@
       (is (= {:title "My Title"}
              (:metadata asset)))))
   
-  (testing "Can read asset without metadata"
-    (let [content (str "This is my body\n")
+    (testing "Only strips first chunk as metadata"
+    (let [content (str "----\n"
+                       "title: My Title\n"
+                       "----\n"
+                       "Body Heading\n"
+                       "----\n"
+                       "This is my body\n")
           asset (read-md-asset content :post)]
-      (is (= "This is my body"
+      (is (= "Body Heading\n----\nThis is my body"
              (:body asset)))
+      (is (= "My Title"
+             (:title asset)))
       (is (= :post
-             (:asset-type asset))))))
+             (:asset-type asset)))
+      (is (= {:title "My Title"}
+             (:metadata asset))))))
