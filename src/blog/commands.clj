@@ -15,25 +15,41 @@
 
 (def ^:const start-dir (System/getProperty "user.dir"))
 
+(defn safe-copy [src dest]
+  "Copy file from src to dest-file if dest-file doesn't already exist.
+   src can be anything that can be accepted by clojure.java.io/reader.
+   dest can be anything that can be accepted by clojure.java.io/file."
+  (let [dest-file (jio/file dest)]
+    (if (.exists dest-file)
+      (println " Couldn't copy file because if already exists:\n  " (.getCanonicalPath dest-file))
+      (with-open [src-reader (jio/reader src)]
+        (jio/copy src-reader dest-file)
+        (println " Copied: " (.getCanonicalPath dest-file))))))
+
 ; TODO config file with blog title + other things?  If so, remove hard-coded
 ;      title from index template.
 (defn create [args]
-  (println "Creating new blog in:\n" start-dir)
-  (doseq [path (map #(str start-dir "/" %) [(-> asset-types :page :dest-path)
+  (println "Creating new blog in:" start-dir)
+  (doseq [path (map #(str start-dir "/" %) [(-> asset-types :page :src-path)
+                                            (-> asset-types :post :src-path)
+                                            (-> asset-types :page :dest-path)
                                             (-> asset-types :post :dest-path)
-                                            (-> asset-types :page :src-path)
-                                            (-> asset-types :post :src-path)])]
+                                            "site/bootstrap/css"
+                                            "site/bootstrap/img"
+                                            "site/bootstrap/js"
+                                            "site/css"])]
     (.mkdirs (jio/file path))
-    (println " Created folder: " path))
-      
-  ; Copy index
-  (let [src-file (jio/file (str start-dir "/" (:src-path (:page asset-types)) "/index.md"))]
-    (if (.exists src-file)
-      (println "Couldn't create index for new blog.  The following file already exists:\n"
-               (.getCanonicalPath src-file))
-      (with-open [index-reader (jio/reader (jio/resource "pages/index.md"))]
-        (jio/copy index-reader src-file)
-        (println "Created index:\n" (.getCanonicalPath src-file))))))
+    (println " Created folder:" path))
+  
+  ; Copy index & other resources
+  (let [dest-index (str start-dir "/" (:src-path (:page asset-types)) "/index.md")]
+    (safe-copy (jio/resource "pages/index.md") dest-index)
+    (doall (map #(safe-copy (jio/resource %) (str start-dir "/site/" %))
+                ["bootstrap/css/bootstrap.min.css"
+                 "bootstrap/img/glyphicons-halflings-white.png"
+                 "bootstrap/img/glyphicons-halflings.png"
+                 "bootstrap/js/bootstrap.min.js"
+                 "css/chanchan.css"]))))
 
 (defn post [args]
   ; TODO Convert title into filesystem-safe title
