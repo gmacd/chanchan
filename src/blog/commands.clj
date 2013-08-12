@@ -57,7 +57,7 @@
         date-str (-> (SimpleDateFormat. "yyyy-MM-dd") (.format (Date.)))
         dest-file (jio/file (str start-dir "/" (-> asset-types :post :src-path) "/"
                                  (str date-str "-" (.toLowerCase title) ".md")))
-        post-template (slurp (jio/resource "templates/post.md"))
+        post-template (slurp (jio/resource "templates/new_post.md"))
         new-post (render post-template
                          {:title title
                           :date date-str})]
@@ -74,7 +74,7 @@
         date-str (-> (SimpleDateFormat. "yyyy-MM-dd") (.format (Date.)))
         dest-file (jio/file (str start-dir "/" (-> asset-types :page :src-path) "/"
                                  (str date-str "-" (.toLowerCase title) ".md")))
-        page-template (slurp (jio/resource "templates/page.md"))
+        page-template (slurp (jio/resource "templates/new_page.md"))
         new-page (render page-template
                          {:title title})]
     (if (.exists dest-file)

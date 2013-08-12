@@ -2,13 +2,13 @@
   (:require [clojure.java.io :as jio]
             [clojure.string :as string]
             [markdown.core :refer [md-to-html-string]]
-            [clostache.parser :refer [render]]
-            [clj-time.coerce :refer [from-long]]
-            [clj-time.format :refer [formatter parse unparse]]
+            [clostache.parser :refer [render render-resource]]
+            [clj-time.coerce :refer [from-long from-date]]
+            [clj-time.format :refer [formatter unparse]]
+            [clj-yaml.core :refer [parse-string]]
             [blog.file :refer [file-attributes with-ext files-with-extension]]))
 
 ; TODO Load templates and cache them
-; TODO Directly add all metadata into map for replacement?
 ; TODO Post sorting?
 ; TODO Could I improve this with dynamic private vars?
 ;      Seems a suitable place.
@@ -20,8 +20,10 @@
 ; TODO Disqus
 ;      Google Analytics
 
-(def asset-date-formatter (formatter "yyyy-MM-dd"))
 (def display-date-formatter (formatter "d MMMM yyy"))
+
+; Load up the site settings
+(def config-settings (parse-string (slurp "config.yml")))
 
 (def ^:const dest-root-path "site")
 
@@ -30,11 +32,11 @@
   {:post {:src-path "assets/posts"
           :dest-path "site/posts"
           :url "/posts/"
-          :template "templates/post_wrapper.md"}
+          :template "templates/post_wrapper.html"}
    :page {:src-path "assets/pages"
           :dest-path "site/pages"
           :url "/pages/"
-          :template "templates/page_wrapper.md"}})
+          :template "templates/page_wrapper.html"}})
 
 (defn asset-type [asset]
   "Return the asset-type record for a given asset"
@@ -46,15 +48,7 @@
   (let [date (:date (:metadata asset))]
     (if (nil? date)
       (-> (file-attributes (:src-path asset)) (.creationTime) (.toMillis) (from-long))
-      (-> (parse asset-date-formatter date)))))
-
-(defn metadata-string->map [metadata]
-  "Given string of several lines of form 'key1:value1', return map of kvps."
-  (let [metadata (if (nil? metadata) "" metadata)]
-    (let [kvp-strings (map #(string/split % #":") (string/split metadata #"[\r\n]+"))]
-      (into {}
-            (for [[k v] kvp-strings :when (not (string/blank? k))]
-              [(keyword k) ((fnil string/trim "") v)])))))
+      (from-date date))))
 
 (defrecord Asset [asset-type metadata src-path title body])
 
@@ -66,13 +60,13 @@
    If no split, entire message is considered Markdown content."
   (let [[raw-metadata md] (filter #(not (empty? %))
                                   (string/split asset-contents #"(?m)^-+$" 3))
-        metadata (metadata-string->map raw-metadata)]
+        metadata (parse-string raw-metadata)]
     (if (and (not (nil? raw-metadata)) (not (nil? md)))
       (map->Asset {:asset-type asset-type
                    :metadata metadata
-                                        ; Need :title so replace-vars step can access it for asset collection
+                   ; Need :title so replace-vars step can access it for asset collection
                    :title (:title metadata)
-                 :body (string/trim md)})
+                   :body (string/trim md)})
       (println " Asset doesn't declare both metadata and a body"))))
 
 ; TODO dest-path should be a file - currently it's a string
@@ -103,11 +97,12 @@
 (defn replace-vars [text asset all-assets]
   "Return the given text, with {{foo}} vars replaced."
   (render text
-          {:title (:title asset)
-           :date (unparse display-date-formatter (get-asset-date asset))
-           :asset (:body asset)
-           :posts (:posts all-assets)
-           :pages (:pages all-assets)}))
+          (merge {:title (:title asset)
+                  :date (unparse display-date-formatter (get-asset-date asset))
+                  :asset (:body asset)
+                  :posts (:posts all-assets)
+                  :pages (:pages all-assets)}
+                 config-settings)))
 
 ; TODO Split two replacement operations?
 (defn replace-asset-variables [asset all-assets]
@@ -115,18 +110,27 @@
    been insert into its asset type template."
   ; Replace vars in the asset body
   (let [asset (assoc asset
-                :body (replace-vars (:body asset) asset all-assets))
+                :body (-> (:body asset)
+                          (replace-vars asset all-assets)
+                          (md-to-html-string)))
         post-template (slurp (jio/resource (:template (asset-type asset))))]
+    (println "/xxxxxxxxxxxxxx\\")
+    (println (:body asset))
+    (println "\\xxxxxxxxxxxxxx/")
+    
     ; Now replace vars in the asset type body
-    (assoc asset
-      :replaced-asset (replace-vars post-template asset all-assets))))
+    (def a (assoc asset
+      :replaced-asset (replace-vars post-template asset all-assets)))
+        (println "yyyy")
+    (println (:replaced-asset a))
+    a
+))
 
 (defn export-asset-as-html [asset]
-  (let [body (md-to-html-string (:replaced-asset asset))
-        html-template (slurp (jio/resource "templates/default.html"))
-        html (render html-template
-                     {:title (:title asset)
-                      :body body})]
+  (let [html (render-resource "templates/default.html"
+                              (merge {:title (:title asset)
+                                      :body (:replaced-asset asset)}
+                                     config-settings))]
     (println " Exporting" (:dest-path asset))
     (spit (:dest-path asset) html)))
 

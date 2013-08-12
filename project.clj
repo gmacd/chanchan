@@ -10,5 +10,6 @@
                  [hiccup "1.0.3"]
                  [de.ubercode.clostache/clostache "1.3.1"]
                  [markdown-clj "0.9.29"]
+                 [clj-yaml "0.4.0"]
                  [watchtower "0.1.1"]
                  [clj-time "0.5.1"]])
