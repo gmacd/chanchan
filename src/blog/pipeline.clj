@@ -17,6 +17,8 @@
 ;      Then can use it without passing it into funcs
 ; TODO System object to store all app state -> core
 ;      Can have constructor for cmd line app, one for dev repl use, etc.
+; TODO Disqus
+;      Google Analytics
 
 (def asset-date-formatter (formatter "yyyy-MM-dd"))
 (def display-date-formatter (formatter "d MMMM yyy"))
@@ -28,11 +30,11 @@
   {:post {:src-path "assets/posts"
           :dest-path "site/posts"
           :url "/posts/"
-          :template "post_wrapper.md"}
+          :template "templates/post_wrapper.md"}
    :page {:src-path "assets/pages"
           :dest-path "site/pages"
           :url "/pages/"
-          :template "page_wrapper.md"}})
+          :template "templates/page_wrapper.md"}})
 
 (defn asset-type [asset]
   "Return the asset-type record for a given asset"
@@ -114,7 +116,7 @@
   ; Replace vars in the asset body
   (let [asset (assoc asset
                 :body (replace-vars (:body asset) asset all-assets))
-        post-template (slurp (jio/resource "templates/page_wrapper.md"))]
+        post-template (slurp (jio/resource (:template (asset-type asset))))]
     ; Now replace vars in the asset type body
     (assoc asset
       :replaced-asset (replace-vars post-template asset all-assets))))
