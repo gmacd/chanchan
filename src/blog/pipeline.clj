@@ -114,17 +114,10 @@
                           (replace-vars asset all-assets)
                           (md-to-html-string)))
         post-template (slurp (jio/resource (:template (asset-type asset))))]
-    (println "/xxxxxxxxxxxxxx\\")
-    (println (:body asset))
-    (println "\\xxxxxxxxxxxxxx/")
     
     ; Now replace vars in the asset type body
-    (def a (assoc asset
-      :replaced-asset (replace-vars post-template asset all-assets)))
-        (println "yyyy")
-    (println (:replaced-asset a))
-    a
-))
+    (assoc asset
+      :replaced-asset (replace-vars post-template asset all-assets))))
 
 (defn export-asset-as-html [asset]
   (let [html (render-resource "templates/default.html"
