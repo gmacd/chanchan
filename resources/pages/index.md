@@ -1,6 +1,10 @@
 ----
-title: My New Blog
 ----
+{{blog-title}}
+====
+
+***
+
 {{#posts}}
 * {{date}} - [{{title}}]({{url}})
 {{/posts}}
