@@ -95,13 +95,13 @@
 
 (defn replace-vars [text asset]
   "Return the given text, with {{foo}} vars replaced."
-  (render text
-          (merge {:title (:title asset)
-                  :date (unparse display-date-formatter (get-asset-date asset))
-                  :asset (:body asset)
-                  :posts (:posts-by-date asset)
-                  :pages (:pages asset)}
-                 config-settings)))
+  (render text {:title (:title asset)
+                :date (unparse display-date-formatter (get-asset-date asset))
+                :body (:body asset)
+                :posts (:posts-by-date asset)
+                :pages (:pages asset)
+                :blog-title (:blog-title asset)
+                :post-footer (:post-footer asset)}))
 
 ; TODO Split two replacement operations?
 (defn replace-asset-variables [asset]
@@ -115,13 +115,14 @@
         post-template (slurp (jio/resource (:template (asset-type asset))))]
     
     ; Now replace vars in the asset type body
-    (assoc asset :replaced-asset (replace-vars post-template asset))))
+    (assoc asset :body (replace-vars post-template asset))))
 
 (defn export-asset-as-html [asset]
   (let [html (render-resource "templates/default.html"
-                              (merge {:title (:title asset)
-                                      :body (:replaced-asset asset)}
-                                     config-settings))]
+                              {:title (:title asset)
+                               :body (:body asset)
+                               :blog-title (:blog-title asset)
+                               :post-footer (:post-footer asset)})]
     (println " Exporting" (:dest-path asset))
     (spit (:dest-path asset) html)))
 
@@ -131,13 +132,14 @@
   ; Preprocess all assets
   (let [posts (sort-by :date (preprocess-assets :post blog-dir))
         pages (preprocess-assets :page blog-dir)
-        posts (map #(assoc % :posts-by-date posts :pages pages) posts)
-        pages (map #(assoc % :posts-by-date posts :pages pages) pages)]
-      ; Variable replacement
-      (let [all-assets-for-export (map #(replace-asset-variables %) (concat posts pages))]
-        (doall (map #(export-asset-as-html %) all-assets-for-export)))
+        all-assets (map #(merge (assoc %
+                                  :posts-by-date posts
+                                  :pages pages)
+                                config-settings) (concat posts pages))
+        all-assets-for-export (map #(replace-asset-variables %) all-assets)]
+    (doall (map #(export-asset-as-html %) all-assets-for-export))
 
-      ; If index.html exists, copy it to the root folder
-      (let [index-page (first (filter #(.endsWith (:url %) "/pages/index.html") pages))]
-        (if-not (nil? index-page)
-          (jio/copy (jio/file (:dest-path index-page)) (jio/file "site/index.html"))))))
+    ; If index.html exists, copy it to the root folder
+    (let [index-page (first (filter #(.endsWith (:url %) "/pages/index.html") all-assets))]
+      (if-not (nil? index-page)
+        (jio/copy (jio/file (:dest-path index-page)) (jio/file "site/index.html"))))))
