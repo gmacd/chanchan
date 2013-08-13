@@ -17,10 +17,9 @@
 ;      Then can use it without passing it into funcs
 ; TODO System object to store all app state -> core
 ;      Can have constructor for cmd line app, one for dev repl use, etc.
-; TODO Disqus
-;      Google Analytics
+; TODO Google Analytics
 
-(def display-date-formatter (formatter "d MMMM yyy"))
+(def display-date-formatter (formatter "dd MMMM yyy"))
 
 ; Load up the site settings
 (def config-settings (parse-string (slurp "config.yml")))
@@ -89,10 +88,10 @@
 
 (defn preprocess-assets [asset-type blog-path]
   "Given an asset type, return a collection of all asset records of that type."
-  (let [src-dir (str blog-path "/" (:src-path (asset-type asset-types)))
+  (let [src-path (str blog-path "/" (:src-path (asset-type asset-types)))
         dest-path (str blog-path "/" (:dest-path (asset-type asset-types)))]
     (map #(preprocess-asset % asset-type dest-path)
-       (files-with-extension src-dir ".md"))))
+       (files-with-extension src-path ".md"))))
 
 (defn replace-vars [text asset all-assets]
   "Return the given text, with {{foo}} vars replaced."
