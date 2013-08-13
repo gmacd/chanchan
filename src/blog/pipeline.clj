@@ -76,7 +76,8 @@
                 :src-path src-path
                 :dest-path (str dest-directory "/" html-filename)
                 :url (str (:url (asset-type asset)) html-filename))]
-    (assoc asset :date (unparse display-date-formatter (get-asset-date asset)))))
+    (assoc asset
+      :display-date (unparse display-date-formatter (get-asset-date asset)))))
 
 (defn preprocess-asset [asset-path asset-type dest-directory]
   "First step of the pipeline, given an asset path and its type, returns an
@@ -93,16 +94,6 @@
     (map #(preprocess-asset % asset-type dest-path)
        (files-with-extension src-path ".md"))))
 
-(defn replace-vars [text asset]
-  "Return the given text, with {{foo}} vars replaced."
-  (render text {:title (:title asset)
-                :date (unparse display-date-formatter (get-asset-date asset))
-                :body (:body asset)
-                :posts (:posts-by-date asset)
-                :pages (:pages asset)
-                :blog-title (:blog-title asset)
-                :post-footer (:post-footer asset)}))
-
 ; TODO Split two replacement operations?
 (defn replace-asset-variables [asset]
   "First replace vars in the body of the asset, then in the asset once it's
@@ -110,19 +101,15 @@
   ; Replace vars in the asset body
   (let [asset (assoc asset
                 :body (-> (:body asset)
-                          (replace-vars asset)
+                          (render asset)
                           (md-to-html-string)))
         post-template (slurp (jio/resource (:template (asset-type asset))))]
     
     ; Now replace vars in the asset type body
-    (assoc asset :body (replace-vars post-template asset))))
+    (assoc asset :body (render post-template asset))))
 
 (defn export-asset-as-html [asset]
-  (let [html (render-resource "templates/default.html"
-                              {:title (:title asset)
-                               :body (:body asset)
-                               :blog-title (:blog-title asset)
-                               :post-footer (:post-footer asset)})]
+  (let [html (render-resource "templates/default.html" asset)]
     (println " Exporting" (:dest-path asset))
     (spit (:dest-path asset) html)))
 

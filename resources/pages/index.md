@@ -5,6 +5,6 @@
 
 ***
 
-{{#posts}}
-* {{date}} - [{{title}}]({{url}})
-{{/posts}}
+{{#posts-by-date}}
+* {{display-date}} - [{{title}}]({{url}})
+{{/posts-by-date}}
