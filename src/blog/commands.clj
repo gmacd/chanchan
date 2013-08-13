@@ -1,6 +1,7 @@
 (ns blog.commands
   (:require [clojure.java.io :as jio]
             [clostache.parser :refer [render]]
+            [watchtower.core :refer [watcher on-change file-filter rate ignore-dotfiles extensions]]
             [blog.pipeline :refer [build-site asset-types]]
             [blog.server :refer [launch-server]])
   (:import (java.text SimpleDateFormat ParsePosition)
@@ -87,9 +88,28 @@
 (defn build [args]
   (build-site start-dir))
 
+; TODO - Currently rebuilds entire site - worth making smarter?  Right now, no!
+; TODO check file stamp for files newer than start time
+(defn- on-files-changed [files]
+  "Rebuild site when files changed"
+  (build-site start-dir))
+
+; File watcher future for .md posts
+(defn create-watcher [folders ext]
+  "Create a file watcher for any extension in exts"
+  (println (str folders))
+  (watcher folders
+           (rate 50)
+           (file-filter ignore-dotfiles)
+           (file-filter (extensions ext))
+           (on-change on-files-changed)))
+
 ; TODO Port override
 (defn server [args]
   (build-site start-dir)
+  ;(let [asset-watcher (create-watcher [(str (-> asset-types :post :src-path) "/")
+  ;                                     (str (-> asset-types :page :src-path) "/")]
+  ;                                    :md)]
   (launch-server))
 
 (def commands
