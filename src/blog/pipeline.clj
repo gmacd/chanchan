@@ -3,7 +3,7 @@
             [clojure.string :as string]
             [markdown.core :refer [md-to-html-string]]
             [clostache.parser :refer [render render-resource]]
-            [clj-time.coerce :refer [from-long from-date]]
+            [clj-time.coerce :refer [to-long from-long from-date]]
             [clj-time.format :refer [formatter unparse]]
             [clj-yaml.core :refer [parse-string]]
             [blog.file :refer [file-attributes with-ext files-with-extension]]))
@@ -75,9 +75,11 @@
         asset (assoc asset
                 :src-path src-path
                 :dest-path (str dest-directory "/" html-filename)
-                :url (str (:url (asset-type asset)) html-filename))]
+                :url (str (:url (asset-type asset)) html-filename))
+        date (get-asset-date asset)]
     (assoc asset
-      :display-date (unparse display-date-formatter (get-asset-date asset)))))
+      :date date
+      :display-date (unparse display-date-formatter date))))
 
 (defn preprocess-asset [asset-path asset-type dest-directory]
   "First step of the pipeline, given an asset path and its type, returns an
@@ -117,10 +119,11 @@
   (println "Building blog:" blog-dir)
   
   ; Preprocess all assets
-  (let [posts (sort-by :date (preprocess-assets :post blog-dir))
+  (let [posts (preprocess-assets :post blog-dir)
         pages (preprocess-assets :page blog-dir)
+        posts-by-date (sort-by #(to-long (:date %)) > posts)
         all-assets (map #(merge (assoc %
-                                  :posts-by-date posts
+                                  :posts-by-date posts-by-date
                                   :pages pages)
                                 config-settings) (concat posts pages))
         all-assets-for-export (map #(replace-asset-variables %) all-assets)]
