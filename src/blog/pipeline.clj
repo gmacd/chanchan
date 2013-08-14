@@ -24,16 +24,14 @@
 ; Load up the site settings
 (def config-settings (parse-string (slurp "config.yml")))
 
-(def ^:const dest-root-path "site")
-
 ; TODO Remove the :src-path and :dest-path from the asset record & use asset-type
 (def ^:const asset-types
   {:post {:src-path "assets/posts"
-          :dest-path "site/posts"
+          :dest-path "posts"
           :url "/posts/"
           :template "templates/post_wrapper.html"}
    :page {:src-path "assets/pages"
-          :dest-path "site/pages"
+          :dest-path "pages"
           :url "/pages/"
           :template "templates/page_wrapper.html"}})
 
@@ -132,4 +130,4 @@
     ; If index.html exists, copy it to the root folder
     (let [index-page (first (filter #(.endsWith (:url %) "/pages/index.html") all-assets))]
       (if-not (nil? index-page)
-        (jio/copy (jio/file (:dest-path index-page)) (jio/file "site/index.html"))))))
+        (jio/copy (jio/file (:dest-path index-page)) (jio/file "index.html"))))))

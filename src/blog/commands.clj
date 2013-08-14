@@ -35,17 +35,17 @@
                                             (-> asset-types :post :src-path)
                                             (-> asset-types :page :dest-path)
                                             (-> asset-types :post :dest-path)
-                                            "site/bootstrap/css"
-                                            "site/bootstrap/img"
-                                            "site/bootstrap/js"
-                                            "site/css"])]
+                                            "bootstrap/css"
+                                            "bootstrap/img"
+                                            "bootstrap/js"
+                                            "css"])]
     (.mkdirs (jio/file path))
     (println " Created folder:" path))
   
   ; Copy index & other resources
   (let [dest-index (str start-dir "/" (:src-path (:page asset-types)) "/index.md")]
     (safe-copy (jio/resource "pages/index.md") dest-index)
-    (doall (map #(safe-copy (jio/resource %) (str start-dir "/site/" %))
+    (doall (map #(safe-copy (jio/resource %) (str start-dir "/" %))
                 ["bootstrap/css/bootstrap.min.css"
                  "bootstrap/img/glyphicons-halflings-white.png"
                  "bootstrap/img/glyphicons-halflings.png"

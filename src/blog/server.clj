@@ -10,5 +10,5 @@
   (response "hello world"))
 
 (defn launch-server []
-  (let [app (wrap-file handler "site/")]
+  (let [app (wrap-file handler ".")]
     (run-jetty app {:port 3000})))
