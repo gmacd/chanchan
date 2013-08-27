@@ -21,9 +21,6 @@
 
 (def display-date-formatter (formatter "dd MMMM yyy"))
 
-; Load up the site settings
-(def config-settings (parse-string (slurp "config.yml")))
-
 ; TODO Remove the :src-path and :dest-path from the asset record & use asset-type
 (def ^:const asset-types
   {:post {:src-path "assets/posts"
@@ -117,7 +114,8 @@
   (println "Building blog:" blog-dir)
   
   ; Preprocess all assets
-  (let [posts (preprocess-assets :post blog-dir)
+  (let [config-settings (parse-string (slurp "config.yml"))
+        posts (preprocess-assets :post blog-dir)
         pages (preprocess-assets :page blog-dir)
         posts-by-date (sort-by #(to-long (:date %)) > posts)
         all-assets (map #(merge (assoc %
